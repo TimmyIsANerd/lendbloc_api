@@ -46,10 +46,36 @@ For more information on each endpoint, please refer to the individual requests i
 
 ## Authentication
 
-The Authentication module handles user registration, login, and account recovery. It provides endpoints for:
+The Authentication module is responsible for managing user access to the LendBloc platform. It provides a secure and seamless experience for users to register, log in, and recover their accounts. The module uses a combination of email/phone and password authentication, along with a one-time password (OTP) system for enhanced security.
 
-*   **User Registration:** Create a new user account with either an email or phone number.
-*   **User Login:** Log in with an email or phone number and password. This will send an OTP to the user's email or phone.
-*   **OTP Verification:** Verify the OTP to complete the login process and receive an access token.
-*   **Password Reset:** Request a password reset, which will send an OTP to the user's email or phone.
-*   **Set New Password:** Set a new password using the OTP received from the password reset request.
+### Endpoints
+
+The Authentication module provides the following endpoints:
+
+*   **User Registration:** `POST /api/v1/auth/register`
+*   **User Login:** `POST /api/v1/auth/login`
+*   **OTP Verification:** `POST /api/v1/auth/verify-login`
+*   **Password Reset:** `POST /api/v1/auth/request-password-reset`
+*   **Set New Password:** `POST /api/v1/auth/set-password`
+
+### Logic Explanation for Front-End Developers
+
+#### User Registration
+
+When a user registers, the `registerUser` function is called. This function first checks if a user with the same email, phone number, or social issuance number already exists. If so, it returns a `409 Conflict` error. Otherwise, it creates a new user and a default Bitcoin wallet for them. The response will be a `200 OK` with a success message and the new user's ID.
+
+#### User Login
+
+The `loginUser` function handles the login process. It first checks if the user has provided either an email or a phone number. If not, it returns a `400 Bad Request` error. It then checks if the user exists and if the password is correct. If the credentials are valid, it generates a 6-digit OTP and sends it to the user's email or phone. The response will be a `200 OK` with a message indicating that an OTP has been sent.
+
+#### OTP Verification
+
+Once the user receives the OTP, they need to send it back to the server for verification. The `verifyLogin` function handles this process. It first checks if the user has provided either an email or a phone number. If not, it returns a `400 Bad Request` error. It then checks if the user exists and if the OTP is valid and has not expired. If the OTP is valid, it generates an access token and a refresh token. The access token is sent in the response body, and the refresh token is sent as an HTTP-only cookie. The response will be a `200 OK` with the access token.
+
+#### Password Reset
+
+If the user forgets their password, they can request a password reset. The `requestPasswordReset` function handles this process. It first checks if the user has provided either an email or a phone number. If not, it returns a `400 Bad Request` error. It then checks if the user exists. If so, it generates a 5-digit OTP and sends it to the user's email or phone. The response will be a `200 OK` with a message indicating that a password reset has been requested.
+
+#### Set New Password
+
+Once the user receives the OTP for the password reset, they can set a new password. The `setPassword` function handles this process. It first checks if the user has provided either an email or a phone number. If not, it returns a `400 Bad Request` error. It then checks if the user exists and if the OTP is valid and has not expired. It also checks if the new password is the same as the old password. If all the checks pass, it updates the user's password and returns a `200 OK` with a success message.
