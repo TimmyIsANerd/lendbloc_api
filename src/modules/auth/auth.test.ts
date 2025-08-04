@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach, beforeAll, afterAll } from 'bun:test';
 import mongoose from 'mongoose';
+import bcrypt from 'bcrypt';
 import app from '../../../index';
 import User from '../../models/User';
 import Otp from '../../models/Otp';
@@ -48,7 +49,7 @@ describe('Auth Module', () => {
         dateOfBirth: '01/01/1990',
         email: 'jane.doe@example.com',
         socialIssuanceNumber: '0987654321',
-        passwordHash: 'password123',
+        passwordHash: await bcrypt.hash('password123', 10),
       });
 
       // Then, try to register the same user again
