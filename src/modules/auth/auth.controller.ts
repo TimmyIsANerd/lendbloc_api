@@ -9,6 +9,7 @@ import bcrypt from 'bcrypt';
 import { sign, verify } from 'hono/jwt';
 import { getCookie, setCookie } from 'hono/cookie';
 import { generateMnemonic, mnemonicToSeed } from '@scure/bip39';
+import * as wordlists from '@scure/bip39/wordlists/english';
 import { HDNodeWallet } from 'ethers'; // Using ethers for HDNodeWallet as viem/accounts doesn't directly expose it
 import TronWeb from 'tronweb';
 
@@ -50,7 +51,7 @@ export const registerUser = async (c: Context) => {
     }
 
     // Generate a 12-word mnemonic phrase
-    const mnemonic = generateMnemonic();
+    const mnemonic = generateMnemonic(wordlists.english);
     const encryptedMnemonic = encrypt(mnemonic); // Encrypt the mnemonic
 
     // Derive master key from mnemonic
