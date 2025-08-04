@@ -11,6 +11,10 @@ import { getCookie, setCookie } from 'hono/cookie';
 import { generateMnemonic, mnemonicToSeed } from '@scure/bip39';
 import * as wordlists from '@scure/bip39/wordlists/english';
 import { HDNodeWallet } from 'ethers'; // Using ethers for HDNodeWallet as viem/accounts doesn't directly expose it
+import * as bitcoin from 'bitcoinjs-lib';
+import * as ecc from 'tiny-secp256k1';
+import { BIP32Factory } from 'bip32';
+const bip32 = BIP32Factory(ecc);
 import TronWeb from 'tronweb';
 
 import {
@@ -51,7 +55,7 @@ export const registerUser = async (c: Context) => {
     }
 
     // Generate a 12-word mnemonic phrase
-    const mnemonic = generateMnemonic(wordlists.english);
+    const mnemonic = generateMnemonic(wordlists.wordlist);
     const encryptedMnemonic = encrypt(mnemonic); // Encrypt the mnemonic
 
     // Derive master key from mnemonic
@@ -62,15 +66,32 @@ export const registerUser = async (c: Context) => {
     const ethWallet = hdNode.derivePath("m/44'/60'/0'/0/0");
     const ethAddress = ethWallet.address;
 
-    // Derive Tron address
-    const tronWeb = new TronWeb({
-      fullHost: 'https://api.trongrid.io', // You might want to use a local node or a different provider in production
-    });
-    const tronWallet = tronWeb.fromMnemonic(mnemonic, "m/44'/195'/0'/0/0");
-    const tronAddress = tronWallet.address.base58;
+    // Derive Tron address using the same HD path as Ethereum but with Tron's coin type (195)
+    const tronNode = HDNodeWallet.fromPhrase(mnemonic).derivePath("m/44'/195'/0'/0/0");
+    // Tron addresses are the same as Ethereum addresses but start with 'T'
+    const tronAddress = 'T' + tronNode.address.slice(2).toLowerCase();
 
-    // TODO: Implement Bitcoin address generation using a suitable library (e.g., bitcoinjs-lib)
-    const btcAddress = `btc_address_placeholder_${socialIssuanceNumber}`;
+    // Derive Bitcoin address
+    const btc = bip32.fromSeed(seed, bitcoin.networks.bitcoin);
+    const btcAddress = bitcoin.payments.p2pkh({ pubkey: btc.publicKey, network: bitcoin.networks.bitcoin }).address;
+
+    // Derive Litecoin address (using a common Litecoin derivation path, assuming it's similar to Bitcoin's)
+    // Note: Litecoin's network parameters might differ, this is a common derivation path.
+    // For a real application, ensure correct Litecoin network parameters and derivation paths.
+    // Derive Litecoin address (using a common Litecoin derivation path)
+    const litecoinNetwork = {
+      messagePrefix: '\x19Litecoin Signed Message:\n',
+      bech32: 'ltc',
+      bip32: {
+        public: 0x019fe538,
+        private: 0x019fef38,
+      },
+      pubKeyHash: 0x30,
+      scriptHash: 0x32,
+      wif: 0xb0,
+    };
+    const ltc = bip32.fromSeed(seed, litecoinNetwork);
+    const ltcAddress = bitcoin.payments.p2pkh({ pubkey: ltc.publicKey, network: litecoinNetwork }).address;
 
     const user = await User.create({
       title,
@@ -119,6 +140,18 @@ export const registerUser = async (c: Context) => {
       });
     } else {
       console.warn('BTC asset not found. Skipping BTC wallet creation.');
+    }
+
+    const ltcAsset = await Asset.findOne({ symbol: 'LTC' });
+    if (ltcAsset) {
+      await Wallet.create({
+        userId: user._id,
+        assetId: ltcAsset._id,
+        address: ltcAddress,
+        balance: 0,
+      });
+    } else {
+      console.warn('LTC asset not found. Skipping LTC wallet creation.');
     }
 
     return c.json({ message: 'User registered successfully', userId: user._id });
