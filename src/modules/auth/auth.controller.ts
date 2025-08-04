@@ -8,6 +8,10 @@ import Asset from '../../models/Asset';
 import bcrypt from 'bcrypt';
 import { sign, verify } from 'hono/jwt';
 import { getCookie, setCookie } from 'hono/cookie';
+import { generateMnemonic, mnemonicToSeed } from '@scure/bip39';
+import { HDNodeWallet } from 'ethers'; // Using ethers for HDNodeWallet as viem/accounts doesn't directly expose it
+import TronWeb from 'tronweb';
+
 import {
   registerUserSchema,
   loginUserSchema,
@@ -15,6 +19,11 @@ import {
   requestPasswordResetSchema,
   setPasswordSchema,
 } from './auth.validation';
+
+// Placeholder for encryption/decryption functions. In a production environment,
+// these should be replaced with a robust solution like AES-256-GCM and a proper KDF.
+const encrypt = (text: string) => text; // TODO: Implement robust encryption
+const decrypt = (text: string) => text; // TODO: Implement robust decryption
 
 export const registerUser = async (c: Context) => {
   const { title, fullName, dateOfBirth, email, socialIssuanceNumber, phone, password } = c.req.valid('json' as never) as z.infer<
@@ -40,6 +49,28 @@ export const registerUser = async (c: Context) => {
       return c.json({ error: 'User with this email, phone number, or social issuance number already exists' }, 409);
     }
 
+    // Generate a 12-word mnemonic phrase
+    const mnemonic = generateMnemonic();
+    const encryptedMnemonic = encrypt(mnemonic); // Encrypt the mnemonic
+
+    // Derive master key from mnemonic
+    const seed = await mnemonicToSeed(mnemonic);
+    const hdNode = HDNodeWallet.fromSeed(seed);
+
+    // Derive Ethereum address (EVM compatible)
+    const ethWallet = hdNode.derivePath("m/44'/60'/0'/0/0");
+    const ethAddress = ethWallet.address;
+
+    // Derive Tron address
+    const tronWeb = new TronWeb({
+      fullHost: 'https://api.trongrid.io', // You might want to use a local node or a different provider in production
+    });
+    const tronWallet = tronWeb.fromMnemonic(mnemonic, "m/44'/195'/0'/0/0");
+    const tronAddress = tronWallet.address.base58;
+
+    // TODO: Implement Bitcoin address generation using a suitable library (e.g., bitcoinjs-lib)
+    const btcAddress = `btc_address_placeholder_${socialIssuanceNumber}`;
+
     const user = await User.create({
       title,
       fullName,
@@ -49,20 +80,44 @@ export const registerUser = async (c: Context) => {
       phoneNumber: phone,
       passwordHash,
       isKycVerified: isProduction ? false : true,
+      encryptedMnemonic,
     });
 
-    // Create a default wallet for the user (e.g., Bitcoin wallet)
-    const defaultAsset = await Asset.findOne({ symbol: 'BTC' }); // Assuming BTC is the default asset
-
-    if (defaultAsset) {
+    // Create wallets for the user
+    const ethAsset = await Asset.findOne({ symbol: 'ETH' });
+    if (ethAsset) {
       await Wallet.create({
         userId: user._id,
-        assetId: defaultAsset._id,
-        address: `btc_address_${user._id}`, // Placeholder for a generated BTC address
+        assetId: ethAsset._id,
+        address: ethAddress,
         balance: 0,
       });
     } else {
-      console.warn('Default asset (BTC) not found. Skipping default wallet creation.');
+      console.warn('ETH asset not found. Skipping ETH wallet creation.');
+    }
+
+    const tronAsset = await Asset.findOne({ symbol: 'TRX' });
+    if (tronAsset) {
+      await Wallet.create({
+        userId: user._id,
+        assetId: tronAsset._id,
+        address: tronAddress,
+        balance: 0,
+      });
+    } else {
+      console.warn('TRX asset not found. Skipping TRX wallet creation.');
+    }
+
+    const btcAsset = await Asset.findOne({ symbol: 'BTC' });
+    if (btcAsset) {
+      await Wallet.create({
+        userId: user._id,
+        assetId: btcAsset._id,
+        address: btcAddress,
+        balance: 0,
+      });
+    } else {
+      console.warn('BTC asset not found. Skipping BTC wallet creation.');
     }
 
     return c.json({ message: 'User registered successfully', userId: user._id });
