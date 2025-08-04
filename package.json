@@ -20,6 +20,7 @@
     "mongoose": "^8.17.0"
   },
   "scripts": {
-    "start": "bun run --watch index.ts"
+    "start": "bun run --watch index.ts",
+    "test": "bun test"
   }
 }
