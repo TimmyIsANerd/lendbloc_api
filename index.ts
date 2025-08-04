@@ -1,0 +1,61 @@
+import 'dotenv/config';
+import { Hono } from 'hono';
+import { logger } from 'hono/logger';
+import { cors } from 'hono/cors';
+import auth from './src/modules/auth/auth.routes';
+import users from './src/modules/users/users.routes';
+import wallets from './src/modules/wallets/wallets.routes';
+import lending from './src/modules/lending/lending.routes';
+import savings from './src/modules/savings/savings.routes';
+import exchange from './src/modules/exchange/exchange.routes';
+import notifications from './src/modules/notifications/notifications.routes';
+import admin from './src/modules/admin/admin.routes';
+import connectDB from './src/config/db';
+
+connectDB();
+
+const app = new Hono();
+
+// API Logger
+app.use(logger())
+
+// Cors Configuration
+app.use(cors({
+    origin: (origin) => origin ?? '*', // Reflects the request's origin or * if undefined
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
+    exposeHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    maxAge: 86400,
+}))
+
+
+app.route('/api/v1/auth', auth);
+app.route('/api/v1/users', users);
+app.route('/api/v1/wallets', wallets);
+app.route('/api/v1/lending', lending);
+app.route('/api/v1/savings', savings);
+app.route('/api/v1/exchange', exchange);
+app.route('/api/v1/notifications', notifications);
+app.route('/api/v1/admin', admin);
+
+const now = new Date();
+const formattedDate = now.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZoneName: 'short'
+});
+
+console.log(`
+==========================================
+🚀 Derhex OTC API is running!
+🕒 Deployed at: ${formattedDate}
+==========================================
+`);
+
+export default app;

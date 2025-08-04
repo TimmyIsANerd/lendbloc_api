@@ -1,0 +1,25 @@
+{
+  "name": "lendblock_api",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/mongoose": "^5.11.97",
+    "typescript": "^5.9.2"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@hono/zod-openapi": "^1.0.2",
+    "@hono/zod-validator": "^0.7.2",
+    "@types/pg": "^8.15.5",
+    "dotenv": "^17.2.1",
+    "hono": "^4.8.12",
+    "mongoose": "^8.17.0"
+  },
+  "scripts": {
+    "start": "bun run --watch index.ts"
+  }
+}
