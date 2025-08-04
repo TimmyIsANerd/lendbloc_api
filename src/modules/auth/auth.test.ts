@@ -4,6 +4,9 @@ import bcrypt from 'bcrypt';
 import app from '../../../index';
 import User from '../../models/User';
 import Otp from '../../models/Otp';
+import Wallet from '../../models/Wallet';
+import Asset from '../../models/Asset';
+import { vi } from 'bun:test';
 
 describe('Auth Module', () => {
   beforeAll(async () => {
@@ -20,7 +23,31 @@ describe('Auth Module', () => {
   });
 
   describe('POST /api/v1/auth/register', () => {
-    it('should register a new user successfully', async () => {
+    let assetFindOneSpy: any;
+    let walletCreateSpy: any;
+
+    beforeEach(() => {
+      assetFindOneSpy = vi.spyOn(Asset, 'findOne');
+      walletCreateSpy = vi.spyOn(Wallet, 'create');
+
+      assetFindOneSpy.mockImplementation((query: any) => {
+        if (query.symbol === 'BTC') {
+          return { _id: new mongoose.Types.ObjectId(), symbol: 'BTC' };
+        } else if (query.symbol === 'ETH') {
+          return { _id: new mongoose.Types.ObjectId(), symbol: 'ETH' };
+        } else if (query.symbol === 'TRX') {
+          return { _id: new mongoose.Types.ObjectId(), symbol: 'TRX' };
+        }
+        return null;
+      });
+    });
+
+    afterEach(() => {
+      assetFindOneSpy.mockRestore();
+      walletCreateSpy.mockRestore();
+    });
+
+    it('should register a new user successfully and create wallets', async () => {
       const req = new Request('http://localhost/api/v1/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -39,6 +66,11 @@ describe('Auth Module', () => {
       expect(res.status).toBe(200);
       expect(data).toHaveProperty('message', 'User registered successfully');
       expect(data).toHaveProperty('userId');
+
+      expect(walletCreateSpy).toHaveBeenCalledTimes(3); // BTC, ETH, TRX
+      expect(walletCreateSpy).toHaveBeenCalledWith(expect.objectContaining({ assetId: expect.any(mongoose.Types.ObjectId), address: expect.stringContaining('btc_address_') }));
+      expect(walletCreateSpy).toHaveBeenCalledWith(expect.objectContaining({ assetId: expect.any(mongoose.Types.ObjectId), address: expect.stringContaining('0x') })); // ETH address starts with 0x
+      expect(walletCreateSpy).toHaveBeenCalledWith(expect.objectContaining({ assetId: expect.any(mongoose.Types.ObjectId), address: expect.stringContaining('T') })); // TRX address starts with T
     });
 
     it('should return a 409 conflict error if the user already exists', async () => {
