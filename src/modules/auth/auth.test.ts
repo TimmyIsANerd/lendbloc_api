@@ -1,7 +1,23 @@
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, afterEach, beforeAll, afterAll } from 'bun:test';
+import mongoose from 'mongoose';
 import app from '../../../index';
+import User from '../../models/User';
+import Otp from '../../models/Otp';
 
 describe('Auth Module', () => {
+  beforeAll(async () => {
+    await mongoose.connect(process.env.MONGO_URI!);
+  });
+
+  afterEach(async () => {
+    await User.deleteMany({});
+    await Otp.deleteMany({});
+  });
+
+  afterAll(async () => {
+    await mongoose.connection.close();
+  });
+
   describe('POST /api/v1/auth/register', () => {
     it('should register a new user successfully', async () => {
       const req = new Request('http://localhost/api/v1/auth/register', {
@@ -26,19 +42,14 @@ describe('Auth Module', () => {
 
     it('should return a 409 conflict error if the user already exists', async () => {
       // First, register a user
-      const registerReq = new Request('http://localhost/api/v1/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: 'Mr',
-          fullName: 'Jane Doe',
-          dateOfBirth: '01/01/1990',
-          email: 'jane.doe@example.com',
-          socialIssuanceNumber: '0987654321',
-          password: 'password123',
-        }),
+      await User.create({
+        title: 'Mr',
+        fullName: 'Jane Doe',
+        dateOfBirth: '01/01/1990',
+        email: 'jane.doe@example.com',
+        socialIssuanceNumber: '0987654321',
+        passwordHash: 'password123',
       });
-      await app.fetch(registerReq);
 
       // Then, try to register the same user again
       const req = new Request('http://localhost/api/v1/auth/register', {
@@ -64,19 +75,14 @@ describe('Auth Module', () => {
   describe('POST /api/v1/auth/login', () => {
     it('should send an OTP to the user', async () => {
       // First, register a user
-      const registerReq = new Request('http://localhost/api/v1/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: 'Mr',
-          fullName: 'Login User',
-          dateOfBirth: '01/01/1990',
-          email: 'login.user@example.com',
-          socialIssuanceNumber: '1122334455',
-          password: 'password123',
-        }),
+      await User.create({
+        title: 'Mr',
+        fullName: 'Login User',
+        dateOfBirth: '01/01/1990',
+        email: 'login.user@example.com',
+        socialIssuanceNumber: '1122334455',
+        passwordHash: await bcrypt.hash('password123', 10),
       });
-      await app.fetch(registerReq);
 
       const req = new Request('http://localhost/api/v1/auth/login', {
         method: 'POST',
@@ -97,19 +103,14 @@ describe('Auth Module', () => {
   describe('POST /api/v1/auth/verify-login', () => {
     it('should verify the OTP and return an access token', async () => {
       // First, register a user and get an OTP
-      const registerReq = new Request('http://localhost/api/v1/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: 'Mr',
-          fullName: 'Verify User',
-          dateOfBirth: '01/01/1990',
-          email: 'verify.user@example.com',
-          socialIssuanceNumber: '5566778899',
-          password: 'password123',
-        }),
+      const user = await User.create({
+        title: 'Mr',
+        fullName: 'Verify User',
+        dateOfBirth: '01/01/1990',
+        email: 'verify.user@example.com',
+        socialIssuanceNumber: '5566778899',
+        passwordHash: await bcrypt.hash('password123', 10),
       });
-      await app.fetch(registerReq);
 
       const loginReq = new Request('http://localhost/api/v1/auth/login', {
         method: 'POST',
@@ -121,15 +122,14 @@ describe('Auth Module', () => {
       });
       await app.fetch(loginReq);
 
-      // This is a placeholder for the OTP. In a real test, you would need to get the OTP from the email/SMS.
-      const otp = '123456';
+      const otpDoc = await Otp.findOne({ userId: user._id });
 
       const req = new Request('http://localhost/api/v1/auth/verify-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: 'verify.user@example.com',
-          otp: otp,
+          otp: otpDoc?.code,
         }),
       });
       const res = await app.fetch(req);
@@ -143,19 +143,14 @@ describe('Auth Module', () => {
   describe('POST /api/v1/auth/request-password-reset', () => {
     it('should send a password reset OTP to the user', async () => {
       // First, register a user
-      const registerReq = new Request('http://localhost/api/v1/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: 'Mr',
-          fullName: 'Reset User',
-          dateOfBirth: '01/01/1990',
-          email: 'reset.user@example.com',
-          socialIssuanceNumber: '1231231234',
-          password: 'password123',
-        }),
+      await User.create({
+        title: 'Mr',
+        fullName: 'Reset User',
+        dateOfBirth: '01/01/1990',
+        email: 'reset.user@example.com',
+        socialIssuanceNumber: '1231231234',
+        passwordHash: await bcrypt.hash('password123', 10),
       });
-      await app.fetch(registerReq);
 
       const req = new Request('http://localhost/api/v1/auth/request-password-reset', {
         method: 'POST',
@@ -175,19 +170,14 @@ describe('Auth Module', () => {
   describe('POST /api/v1/auth/set-password', () => {
     it('should set a new password for the user', async () => {
       // First, register a user and request a password reset
-      const registerReq = new Request('http://localhost/api/v1/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: 'Mr',
-          fullName: 'SetPass User',
-          dateOfBirth: '01/01/1990',
-          email: 'setpass.user@example.com',
-          socialIssuanceNumber: '4321432143',
-          password: 'password123',
-        }),
+      const user = await User.create({
+        title: 'Mr',
+        fullName: 'SetPass User',
+        dateOfBirth: '01/01/1990',
+        email: 'setpass.user@example.com',
+        socialIssuanceNumber: '4321432143',
+        passwordHash: await bcrypt.hash('password123', 10),
       });
-      await app.fetch(registerReq);
 
       const resetReq = new Request('http://localhost/api/v1/auth/request-password-reset', {
         method: 'POST',
@@ -198,15 +188,14 @@ describe('Auth Module', () => {
       });
       await app.fetch(resetReq);
 
-      // This is a placeholder for the OTP. In a real test, you would need to get the OTP from the email/SMS.
-      const otp = '12345';
+      const otpDoc = await Otp.findOne({ userId: user._id });
 
       const req = new Request('http://localhost/api/v1/auth/set-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: 'setpass.user@example.com',
-          otp: otp,
+          otp: otpDoc?.code,
           password: 'newpassword123',
         }),
       });
