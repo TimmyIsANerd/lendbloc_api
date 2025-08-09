@@ -10,6 +10,17 @@ export const registerUserSchema = z.object({
   password: z.string().min(8),
 });
 
+export const verifyEmailSchema = z.object({
+  email: z.email(),
+  otp: z.string().length(6),
+});
+
+export const verifyPhoneSchema = z.object({
+  phone: z.string(),
+  otp: z.string().length(6),
+});
+
+
 export const loginUserSchema = z.object({
   email: z.email().optional(),
   phone: z.string().optional(),

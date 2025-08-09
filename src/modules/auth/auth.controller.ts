@@ -3,19 +3,10 @@ import { z } from 'zod';
 import User from '../../models/User';
 import Otp from '../../models/Otp';
 import RefreshToken from '../../models/RefreshToken';
-import Wallet from '../../models/Wallet';
-import Asset from '../../models/Asset';
 import bcrypt from 'bcrypt';
-import { sign, verify } from 'hono/jwt';
-import { getCookie, setCookie } from 'hono/cookie';
-import { generateMnemonic, mnemonicToSeed } from '@scure/bip39';
-import * as wordlists from '@scure/bip39/wordlists/english';
-import { HDNodeWallet } from 'ethers'; // Using ethers for HDNodeWallet as viem/accounts doesn't directly expose it
-import * as bitcoin from 'bitcoinjs-lib';
-import * as ecc from 'tiny-secp256k1';
-import { BIP32Factory } from 'bip32';
-const bip32 = BIP32Factory(ecc);
-import TronWeb from 'tronweb';
+import { sign } from 'hono/jwt';
+import { setCookie } from 'hono/cookie';
+import { generateOtp } from '../../helpers/otp/index';
 
 import {
   registerUserSchema,
@@ -23,12 +14,9 @@ import {
   verifyOtpSchema,
   requestPasswordResetSchema,
   setPasswordSchema,
+  verifyEmailSchema,
+  verifyPhoneSchema 
 } from './auth.validation';
-
-// Placeholder for encryption/decryption functions. In a production environment,
-// these should be replaced with a robust solution like AES-256-GCM and a proper KDF.
-const encrypt = (text: string) => text; // TODO: Implement robust encryption
-const decrypt = (text: string) => text; // TODO: Implement robust decryption
 
 export const registerUser = async (c: Context) => {
   const { title, fullName, dateOfBirth, email, socialIssuanceNumber, phone, password } = c.req.valid('json' as never) as z.infer<
@@ -54,45 +42,6 @@ export const registerUser = async (c: Context) => {
       return c.json({ error: 'User with this email, phone number, or social issuance number already exists' }, 409);
     }
 
-    // Generate a 12-word mnemonic phrase
-    const mnemonic = generateMnemonic(wordlists.wordlist);
-    const encryptedMnemonic = encrypt(mnemonic); // Encrypt the mnemonic
-
-    // Derive master key from mnemonic
-    const seed = await mnemonicToSeed(mnemonic);
-    const hdNode = HDNodeWallet.fromSeed(seed);
-
-    // Derive Ethereum address (EVM compatible)
-    const ethWallet = hdNode.derivePath("m/44'/60'/0'/0/0");
-    const ethAddress = ethWallet.address;
-
-    // Derive Tron address using the same HD path as Ethereum but with Tron's coin type (195)
-    const tronNode = HDNodeWallet.fromPhrase(mnemonic).derivePath("m/44'/195'/0'/0/0");
-    // Tron addresses are the same as Ethereum addresses but start with 'T'
-    const tronAddress = 'T' + tronNode.address.slice(2).toLowerCase();
-
-    // Derive Bitcoin address
-    const btc = bip32.fromSeed(seed, bitcoin.networks.bitcoin);
-    const btcAddress = bitcoin.payments.p2pkh({ pubkey: btc.publicKey, network: bitcoin.networks.bitcoin }).address;
-
-    // Derive Litecoin address (using a common Litecoin derivation path, assuming it's similar to Bitcoin's)
-    // Note: Litecoin's network parameters might differ, this is a common derivation path.
-    // For a real application, ensure correct Litecoin network parameters and derivation paths.
-    // Derive Litecoin address (using a common Litecoin derivation path)
-    const litecoinNetwork = {
-      messagePrefix: '\x19Litecoin Signed Message:\n',
-      bech32: 'ltc',
-      bip32: {
-        public: 0x019fe538,
-        private: 0x019fef38,
-      },
-      pubKeyHash: 0x30,
-      scriptHash: 0x32,
-      wif: 0xb0,
-    };
-    const ltc = bip32.fromSeed(seed, litecoinNetwork);
-    const ltcAddress = bitcoin.payments.p2pkh({ pubkey: ltc.publicKey, network: litecoinNetwork }).address;
-
     const user = await User.create({
       title,
       fullName,
@@ -102,57 +51,22 @@ export const registerUser = async (c: Context) => {
       phoneNumber: phone,
       passwordHash,
       isKycVerified: isProduction ? false : true,
-      encryptedMnemonic,
+      isEmailVerified: isProduction ? false : true
     });
 
-    // Create wallets for the user
-    const ethAsset = await Asset.findOne({ symbol: 'ETH' });
-    if (ethAsset) {
-      await Wallet.create({
-        userId: user._id,
-        assetId: ethAsset._id,
-        address: ethAddress,
-        balance: 0,
-      });
-    } else {
-      console.warn('ETH asset not found. Skipping ETH wallet creation.');
-    }
+    // Deliver Email Verification OTP
+    const otpCode = await generateOtp();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    const tronAsset = await Asset.findOne({ symbol: 'TRX' });
-    if (tronAsset) {
-      await Wallet.create({
-        userId: user._id,
-        assetId: tronAsset._id,
-        address: tronAddress,
-        balance: 0,
-      });
-    } else {
-      console.warn('TRX asset not found. Skipping TRX wallet creation.');
-    }
+    // Create OTP Record
+    console.log('OTP Code:', otpCode);
 
-    const btcAsset = await Asset.findOne({ symbol: 'BTC' });
-    if (btcAsset) {
-      await Wallet.create({
-        userId: user._id,
-        assetId: btcAsset._id,
-        address: btcAddress,
-        balance: 0,
-      });
-    } else {
-      console.warn('BTC asset not found. Skipping BTC wallet creation.');
-    }
+    await Otp.findOneAndUpdate(
+      { userId: user._id },
+      { code: otpCode, expiresAt },
+      { upsert: true, new: true }
+    );
 
-    const ltcAsset = await Asset.findOne({ symbol: 'LTC' });
-    if (ltcAsset) {
-      await Wallet.create({
-        userId: user._id,
-        assetId: ltcAsset._id,
-        address: ltcAddress,
-        balance: 0,
-      });
-    } else {
-      console.warn('LTC asset not found. Skipping LTC wallet creation.');
-    }
 
     return c.json({ message: 'User registered successfully', userId: user._id });
   } catch (error) {
@@ -160,6 +74,88 @@ export const registerUser = async (c: Context) => {
     return c.json({ error: 'An unexpected error occurred during registration.' }, 500);
   }
 };
+
+export const verifyEmail = async (c: Context) => {
+  const { email, otp } = c.req.valid('json' as never) as z.infer<
+    typeof verifyEmailSchema
+  >;
+
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return c.json({ error: 'User not found' }, 404);
+  }
+
+  const storedOtp = await Otp.findOne({
+    userId: user._id,
+  });
+
+  if (!storedOtp || storedOtp.code !== otp || storedOtp.expiresAt < new Date()) {
+    await Otp.deleteOne({ _id: storedOtp?._id });
+    return c.json({ error: 'Invalid or expired OTP' }, 400);
+  }
+
+  await Otp.deleteOne({ _id: storedOtp?._id });
+
+  await User.findByIdAndUpdate(user._id, { isEmailVerified: true });
+
+  // 
+
+  return c.json({ message: 'Email verified successfully' });
+}
+
+export const sendPhone = async (c:Context) => {
+  const { phone } = c.req.valid('json' as never) as z.infer<
+    typeof verifyPhoneSchema
+  >;
+
+  const user = await User.findOne({ phoneNumber: phone });
+
+  if (!user) {
+    return c.json({ error: 'User not found' }, 404);
+  }
+
+  const otpCode = await generateOtp();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  // Create OTP Record
+  console.log('OTP Code:', otpCode);
+
+  await Otp.findOneAndUpdate(
+    { userId: user._id },
+    { code: otpCode, expiresAt },
+    { upsert: true, new: true }
+  );
+
+  return c.json({ message: 'An OTP has been sent to your phone number.' });
+}
+
+export const verifyPhone = async (c: Context) => {
+  const { phone, otp } = c.req.valid('json' as never) as z.infer<
+    typeof verifyPhoneSchema
+  >;
+
+  const user = await User.findOne({ phoneNumber: phone });
+
+  if (!user) {
+    return c.json({ error: 'User not found' }, 404);
+  }
+
+  const storedOtp = await Otp.findOne({
+    userId: user._id,
+  });
+
+  if (!storedOtp || storedOtp.code !== otp || storedOtp.expiresAt < new Date()) {
+    await Otp.deleteOne({ _id: storedOtp?._id });
+    return c.json({ error: 'Invalid or expired OTP' }, 400);
+  }
+
+  await Otp.deleteOne({ _id: storedOtp?._id });
+
+  await User.findByIdAndUpdate(user._id, { isPhoneVerified: true });
+
+  return c.json({ message: 'Phone number verified successfully' });
+}
 
 export const loginUser = async (c: Context) => {
   const { email, phone, password } = c.req.valid('json' as never) as z.infer<

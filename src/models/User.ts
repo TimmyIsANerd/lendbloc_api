@@ -9,7 +9,7 @@ export interface IUser extends Document {
   phoneNumber?: string;
   passwordHash: string;
   isKycVerified: boolean;
-  encryptedMnemonic?: string; // Added for wallet generation
+  isEmailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,7 +24,7 @@ const UserSchema: Schema = new Schema(
     phoneNumber: { type: String, unique: true, sparse: true }, // sparse allows nulls to not violate unique constraint
     passwordHash: { type: String, required: true },
     isKycVerified: { type: Boolean, default: false },
-    encryptedMnemonic: { type: String, required: false }, // Added for wallet generation
+    isEmailVerified: { type: Boolean, default: false }
   },
   { timestamps: true }
 );

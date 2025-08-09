@@ -60,6 +60,42 @@ This project is the backend API for the LendBloc platform, developed using a mod
 *   **Validation**: Zod
 *   **Authentication**: JWT (`@hono/jwt`)
 
+## Project Status & Feature Checklist
+
+This section will be updated after each task to track the progress of the project.
+
+### `auth` service
+- [x] User Registration (`/auth/register`)
+- [x] User Login with OTP (`/auth/login`)
+- [x] OTP Verification and Token Generation (`/auth/verify-login`)
+- [x] Account Recovery OTP Request (`/auth/request-password-reset`)
+- [x] Set New Password with OTP (`/auth/set-password`)
+
+### `users` module
+- [x] User Profile Management (`/users/profile`)
+
+### `wallets` module
+- [x] Wallet Management (`/wallets`)
+
+### `lending` module
+- [x] Loan Creation (`/lending/loans`)
+- [x] Loan Repayment (`/lending/loans/:id/repay`)
+
+### `savings` module
+- [x] Savings Account Management (`/savings`)
+
+### `exchange` module
+- [x] Crypto Swaps (`/exchange/swap`)
+- [x] Coin Voting (`/exchange/vote`)
+
+### `notifications` module
+- [x] Send Notifications (`/notifications`)
+
+### `helpers`
+- [x] OTP Generation
+- [x] Email Templates
+- [x] Email Sending
+
 ## Getting Started
 
 To get started with the LendBloc API, follow these steps:

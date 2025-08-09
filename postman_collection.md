@@ -62,7 +62,7 @@ The Authentication module provides the following endpoints:
 
 #### User Registration
 
-When a user registers, the `registerUser` function is called. This function first checks if a user with the same email, phone number, or social issuance number already exists. If so, it returns a `409 Conflict` error. Otherwise, it creates a new user and a default Bitcoin wallet for them. The response will be a `200 OK` with a success message and the new user's ID.
+When a user registers, the `registerUser` function is called. This function first checks if a user with the same email, phone number, or social issuance number already exists. If so, it returns a `409 Conflict` error. Otherwise, it creates a new user and both a crypto EVM wallet as well as a BTC & LTC for them. The response will be a `200 OK` with a success message and the new user's ID.
 
 #### User Login
 
