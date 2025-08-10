@@ -1,6 +1,5 @@
 import twilio from 'twilio';
 
-const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
 /**
  * Sends an SMS message to the specified phone number via Twilio.
@@ -11,11 +10,17 @@ const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TO
  * @throws If there is an issue with sending the SMS via Twilio.
  */
 export const sendSms = async (phoneNumber: string, message: string) => {
-    await client.messages.create({
-        body: message,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: phoneNumber,
-    });
+    try {
+        const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+        await client.messages.create({
+            body: message,
+            from: process.env.TWILIO_PHONE_NUMBER,
+            to: phoneNumber,
+        });
 
-    return { message: 'SMS sent successfully.' };
+        return { message: 'SMS sent successfully.' };
+    } catch (error) {
+        console.error('Error sending SMS:', error);
+        throw error;
+    }
 };
