@@ -6,14 +6,14 @@ import {
   voteForCoin,
 } from './exchange.controller';
 import {
-  swapSchema,
-  voteCoinSchema,
+  swapCryptoSchema,
+  voteForCoinSchema,
 } from './exchange.validation';
 
 const exchange = new Hono();
 
 exchange.use('/*', authMiddleware);
-exchange.post('/swap', zValidator('json', swapSchema), swapCrypto);
-exchange.post('/vote', zValidator('json', voteCoinSchema), voteForCoin);
+exchange.post('/swap', zValidator('json', swapCryptoSchema), swapCrypto);
+exchange.post('/vote', zValidator('json', voteForCoinSchema), voteForCoin);
 
 export default exchange;

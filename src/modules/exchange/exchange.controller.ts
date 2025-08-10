@@ -2,20 +2,21 @@ import { type Context } from 'hono';
 import { z } from 'zod';
 import Asset from '../../models/Asset';
 import Wallet from '../../models/Wallet';
-import { swapSchema, voteCoinSchema } from './exchange.validation';
+import Vote from '../../models/Vote';
+import { swapCryptoSchema, voteForCoinSchema } from './exchange.validation';
 
 export const swapCrypto = async (c: Context) => {
   const userId = c.get('jwtPayload').userId;
-  const { fromAssetSymbol, toAssetSymbol, amount } = c.req.valid('json' as never) as z.infer<
-    typeof swapSchema
+  const { fromAssetId, toAssetId, amount } = c.req.valid('json' as never) as z.infer<
+    typeof swapCryptoSchema
   >;
 
   try {
-    const fromAsset = await Asset.findOne({ symbol: fromAssetSymbol });
-    const toAsset = await Asset.findOne({ symbol: toAssetSymbol });
+    const fromAsset = await Asset.findById(fromAssetId);
+    const toAsset = await Asset.findById(toAssetId);
 
     if (!fromAsset || !toAsset) {
-      return c.json({ error: 'Invalid asset symbol' }, 400);
+      return c.json({ error: 'Invalid asset ID' }, 400);
     }
 
     const fromWallet = await Wallet.findOne({ userId, assetId: fromAsset._id });
@@ -37,8 +38,10 @@ export const swapCrypto = async (c: Context) => {
       toWallet = await Wallet.create({
         userId,
         assetId: toAsset._id,
-        address: `${toAssetSymbol.toLowerCase()}_address_${userId}`, // Placeholder
+        address: `0x${[...Array(40)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`,
         balance: convertedAmount,
+        network: toAsset.network,
+        encryptedMnemonic: fromWallet.encryptedMnemonic, // This is not secure, just for demonstration
       });
     } else {
       toWallet.balance += convertedAmount;
@@ -54,16 +57,14 @@ export const swapCrypto = async (c: Context) => {
 
 export const voteForCoin = async (c: Context) => {
   const userId = c.get('jwtPayload').userId;
-  const { coinSymbol } = c.req.valid('json' as never) as z.infer<
-    typeof voteCoinSchema
+  const { coinName } = c.req.valid('json' as never) as z.infer<
+    typeof voteForCoinSchema
   >;
 
   try {
-    // In a real application, this would involve a more complex voting mechanism
-    // For now, we'll just log the vote and return a success message.
-    console.log(`User ${userId} voted for ${coinSymbol}`);
+    await Vote.create({ userId, coinName });
 
-    return c.json({ message: `Vote for ${coinSymbol} recorded successfully` });
+    return c.json({ message: `Vote for ${coinName} recorded successfully` });
   } catch (error) {
     console.error('Error during coin voting:', error);
     return c.json({ error: 'An unexpected error occurred' }, 500);

@@ -1,10 +1,14 @@
 import { z } from 'zod';
 
 export const createSavingsAccountSchema = z.object({
-  assetSymbol: z.string(),
-  apy: z.number().positive(),
+  assetId: z.string(),
+  amount: z.number().positive(),
 });
 
-export const depositWithdrawSchema = z.object({
+export const depositToSavingsAccountSchema = z.object({
+  amount: z.number().positive(),
+});
+
+export const withdrawFromSavingsAccountSchema = z.object({
   amount: z.number().positive(),
 });

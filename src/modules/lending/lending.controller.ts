@@ -7,16 +7,16 @@ import { createLoanSchema, repayLoanSchema } from './lending.validation';
 
 export const createLoan = async (c: Context) => {
   const userId = c.get('jwtPayload').userId;
-  const { collateralAssetSymbol, collateralAmount, loanAssetSymbol, loanAmount, interestRate } = c.req.valid('json' as never) as z.infer<
+  const { assetId, amount, collateralAssetId, collateralAmount } = c.req.valid('json' as never) as z.infer<
     typeof createLoanSchema
   >;
 
   try {
-    const collateralAsset = await Asset.findOne({ symbol: collateralAssetSymbol });
-    const loanAsset = await Asset.findOne({ symbol: loanAssetSymbol });
+    const collateralAsset = await Asset.findById(collateralAssetId);
+    const loanAsset = await Asset.findById(assetId);
 
     if (!collateralAsset || !loanAsset) {
-      return c.json({ error: 'Invalid asset symbol' }, 400);
+      return c.json({ error: 'Invalid asset ID' }, 400);
     }
 
     // Check if user has enough collateral in their wallet
@@ -27,7 +27,7 @@ export const createLoan = async (c: Context) => {
     }
 
     // Calculate LTV (Loan-to-Value)
-    const ltv = (loanAmount / collateralAmount) * (loanAsset.currentPrice / collateralAsset.currentPrice);
+    const ltv = (amount * loanAsset.currentPrice) / (collateralAmount * collateralAsset.currentPrice);
 
     // Create the loan
     const loan = await Loan.create({
@@ -35,9 +35,9 @@ export const createLoan = async (c: Context) => {
       collateralAssetId: collateralAsset._id,
       collateralAmount,
       loanAssetId: loanAsset._id,
-      loanAmount,
+      loanAmount: amount,
       ltv,
-      interestRate,
+      interestRate: 0.05, // 5% interest rate
       status: LoanStatus.ACTIVE,
     });
 

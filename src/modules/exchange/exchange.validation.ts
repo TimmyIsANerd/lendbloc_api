@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
-export const swapSchema = z.object({
-  fromAssetSymbol: z.string(),
-  toAssetSymbol: z.string(),
+export const swapCryptoSchema = z.object({
+  fromAssetId: z.string(),
+  toAssetId: z.string(),
   amount: z.number().positive(),
 });
 
-export const voteCoinSchema = z.object({
-  coinSymbol: z.string(),
+export const voteForCoinSchema = z.object({
+  coinName: z.string(),
 });

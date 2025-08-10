@@ -3,16 +3,16 @@ import { z } from 'zod';
 import SavingsAccount from '../../models/SavingsAccount';
 import Asset from '../../models/Asset';
 import Wallet from '../../models/Wallet';
-import { createSavingsAccountSchema, depositWithdrawSchema } from './savings.validation';
+import { createSavingsAccountSchema, depositToSavingsAccountSchema, withdrawFromSavingsAccountSchema } from './savings.validation';
 
 export const createSavingsAccount = async (c: Context) => {
   const userId = c.get('jwtPayload').userId;
-  const { assetSymbol, apy } = c.req.valid('json' as never) as z.infer<
+  const { assetId, amount } = c.req.valid('json' as never) as z.infer<
     typeof createSavingsAccountSchema
   >;
 
   try {
-    const asset = await Asset.findOne({ symbol: assetSymbol });
+    const asset = await Asset.findById(assetId);
 
     if (!asset) {
       return c.json({ error: 'Asset not found' }, 400);
@@ -24,11 +24,20 @@ export const createSavingsAccount = async (c: Context) => {
       return c.json({ error: 'Savings account for this asset already exists' }, 409);
     }
 
+    const userWallet = await Wallet.findOne({ userId, assetId: asset._id });
+
+    if (!userWallet || userWallet.balance < amount) {
+      return c.json({ error: 'Insufficient balance in wallet' }, 400);
+    }
+
+    userWallet.balance -= amount;
+    await userWallet.save();
+
     const savingsAccount = await SavingsAccount.create({
       userId,
       assetId: asset._id,
-      balance: 0,
-      apy,
+      balance: amount,
+      apy: 0.02, // 2% APY
     });
 
     return c.json({ message: 'Savings account created successfully', savingsAccount });
@@ -42,7 +51,7 @@ export const depositToSavingsAccount = async (c: Context) => {
   const userId = c.get('jwtPayload').userId;
   const savingsAccountId = c.req.param('id');
   const { amount } = c.req.valid('json' as never) as z.infer<
-    typeof depositWithdrawSchema
+    typeof depositToSavingsAccountSchema
   >;
 
   try {
@@ -75,7 +84,7 @@ export const withdrawFromSavingsAccount = async (c: Context) => {
   const userId = c.get('jwtPayload').userId;
   const savingsAccountId = c.req.param('id');
   const { amount } = c.req.valid('json' as never) as z.infer<
-    typeof depositWithdrawSchema
+    typeof withdrawFromSavingsAccountSchema
   >;
 
   try {
