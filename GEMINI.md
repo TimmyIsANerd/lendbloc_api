@@ -66,44 +66,7 @@ This project will be developed using a **modular architecture** powered by **Bun
 
 ## Project Status & Feature Checklist
 
-This section will be updated after each task to track the progress of the project.
-
-### `auth` service
-- [x] User Registration (`/auth/register`)
-- [x] User Login with OTP (`/auth/login`)
-- [x] OTP Verification and Token Generation (`/auth/verify-login`)
-- [x] Account Recovery OTP Request (`/auth/request-password-reset`)
-- [x] Set New Password with OTP (`/auth/set-password`)
-
-### `users` module
-- [x] User Profile Management (`/users/profile`)
-
-### `wallets` module
-- [x] Wallet Management (`/wallets`)
-- [x] Wallet Generation for New Users
-- [x] Wallet Initialization Guard
-
-### `lending` module
-- [x] Loan Creation (`/lending/loans`)
-- [x] Loan Repayment (`/lending/loans/:id/repay`)
-
-### `savings` module
-- [x] Savings Account Management (`/savings`)
-
-### `exchange` module
-- [x] Crypto Swaps (`/exchange/swap`)
-- [x] Coin Voting (`/exchange/vote`)
-
-### `notifications` module
-- [x] Send Notifications (`/notifications`)
-
-### `helpers`
-- [x] OTP Generation
-- [x] JSDoc for Twilio `sendOtp` function
-
-### Email Templates
-- [x] Improved UI and UX-centered copy for all email templates
-- [x] Email Verification Success Email (`email-verification-success.ts`)
+All features have been implemented.
 
 This project will be developed with the following best practices in mind:
 
