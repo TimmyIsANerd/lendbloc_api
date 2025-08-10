@@ -11,6 +11,7 @@ import { generateOtp } from '../../helpers/otp/index';
 import { sendEmail } from '../../helpers/email/index';
 import { otpVerificationEmail } from '../../templates/otp-verification';
 import { initializeWalletSystem } from '../../helpers/wallet/index';
+import { nanoid } from 'nanoid';
 
 import {
   registerUserSchema,
@@ -54,6 +55,7 @@ export const registerUser = async (c: Context) => {
       socialIssuanceNumber,
       phoneNumber: phone,
       passwordHash,
+      kycReferenceId: nanoid(),
       isKycVerified: isProduction ? false : true,
       isEmailVerified: isProduction ? false : true,
       isPhoneNumberVerified: isProduction ? false : true,
