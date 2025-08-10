@@ -1,3 +1,10 @@
+import { MailtrapClient } from 'mailtrap';
+
+const client = new MailtrapClient({
+    token: process.env.MAILTRAP_API_KEY!,
+})
+
+
 /**
  * Sends an email using Mailtrap's API.
  *
