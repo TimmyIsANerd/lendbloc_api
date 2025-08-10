@@ -5,6 +5,8 @@ export interface IWallet extends Document {
   assetId: mongoose.Types.ObjectId;
   address: string;
   balance: number;
+  encryptedMnemonic: string;
+  network: string; // BSC, ETH, TRON, BTC
   createdAt: Date;
   updatedAt: Date;
 }
@@ -15,6 +17,8 @@ const WalletSchema: Schema = new Schema(
     assetId: { type: Schema.Types.ObjectId, required: true, ref: 'Asset' },
     address: { type: String, required: true, unique: true },
     balance: { type: Number, required: true, default: 0 },
+    encryptedMnemonic: { type: String, required: true },
+    network: { type: String, required: true, enum: ['BSC', 'ETH', 'TRON', 'BTC', 'LTC'] }
   },
   { timestamps: true }
 );

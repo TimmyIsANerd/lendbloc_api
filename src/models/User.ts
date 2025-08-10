@@ -10,6 +10,7 @@ export interface IUser extends Document {
   passwordHash: string;
   isKycVerified: boolean;
   isEmailVerified: boolean;
+  isPhoneNumberVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -24,7 +25,8 @@ const UserSchema: Schema = new Schema(
     phoneNumber: { type: String, unique: true, sparse: true }, // sparse allows nulls to not violate unique constraint
     passwordHash: { type: String, required: true },
     isKycVerified: { type: Boolean, default: false },
-    isEmailVerified: { type: Boolean, default: false }
+    isEmailVerified: { type: Boolean, default: false },
+    isPhoneNumberVerified: { type: Boolean, default: false }
   },
   { timestamps: true }
 );

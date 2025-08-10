@@ -1,12 +1,16 @@
 import { type Context } from 'hono';
 import { z } from 'zod';
-import User from '../../models/User';
+import User, { type IUser } from '../../models/User';
 import Otp from '../../models/Otp';
 import RefreshToken from '../../models/RefreshToken';
+import Wallet from '../../models/Wallet';
 import bcrypt from 'bcrypt';
 import { sign } from 'hono/jwt';
 import { setCookie } from 'hono/cookie';
 import { generateOtp } from '../../helpers/otp/index';
+import { sendEmail } from '../../helpers/email/index';
+import { otpVerificationEmail } from '../../templates/otp-verification';
+import { initializeWalletSystem } from '../../helpers/wallet/index';
 
 import {
   registerUserSchema,
@@ -15,7 +19,7 @@ import {
   requestPasswordResetSchema,
   setPasswordSchema,
   verifyEmailSchema,
-  verifyPhoneSchema 
+  verifyPhoneSchema
 } from './auth.validation';
 
 export const registerUser = async (c: Context) => {
@@ -42,7 +46,7 @@ export const registerUser = async (c: Context) => {
       return c.json({ error: 'User with this email, phone number, or social issuance number already exists' }, 409);
     }
 
-    const user = await User.create({
+    const user: IUser = await User.create({
       title,
       fullName,
       dateOfBirth,
@@ -51,12 +55,22 @@ export const registerUser = async (c: Context) => {
       phoneNumber: phone,
       passwordHash,
       isKycVerified: isProduction ? false : true,
-      isEmailVerified: isProduction ? false : true
+      isEmailVerified: isProduction ? false : true,
+      isPhoneNumberVerified: isProduction ? false : true,
     });
+
+    // Initialize Wallet Creation
+    // Add a guard to check if wallets are already initialized for this user
+    const existingWallets = await Wallet.countDocuments({ userId: user._id });
+    if (existingWallets === 0) {
+      await initializeWalletSystem(user._id as string);
+    } else {
+      console.log(`Wallets already initialized for user ${user._id}. Skipping initialization.`);
+    }
 
     // Deliver Email Verification OTP
     const otpCode = await generateOtp();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // Expires in 10 minutes
 
     // Create OTP Record
     console.log('OTP Code:', otpCode);
@@ -67,6 +81,8 @@ export const registerUser = async (c: Context) => {
       { upsert: true, new: true }
     );
 
+    // Send OTP to Email First
+    sendEmail(user.email, 'Email Verification OTP', otpVerificationEmail(otpCode, 10));
 
     return c.json({ message: 'User registered successfully', userId: user._id });
   } catch (error) {
@@ -99,12 +115,10 @@ export const verifyEmail = async (c: Context) => {
 
   await User.findByIdAndUpdate(user._id, { isEmailVerified: true });
 
-  // 
-
-  return c.json({ message: 'Email verified successfully' });
+  return c.json({ message: 'Email verified successfully' }, 200);
 }
 
-export const sendPhone = async (c:Context) => {
+export const sendPhone = async (c: Context) => {
   const { phone } = c.req.valid('json' as never) as z.infer<
     typeof verifyPhoneSchema
   >;
@@ -126,6 +140,8 @@ export const sendPhone = async (c:Context) => {
     { code: otpCode, expiresAt },
     { upsert: true, new: true }
   );
+
+  // Deliver SMS OTP
 
   return c.json({ message: 'An OTP has been sent to your phone number.' });
 }
@@ -152,7 +168,7 @@ export const verifyPhone = async (c: Context) => {
 
   await Otp.deleteOne({ _id: storedOtp?._id });
 
-  await User.findByIdAndUpdate(user._id, { isPhoneVerified: true });
+  await User.findByIdAndUpdate(user._id, { isPhoneNumberVerified: true });
 
   return c.json({ message: 'Phone number verified successfully' });
 }

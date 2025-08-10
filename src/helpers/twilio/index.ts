@@ -3,8 +3,15 @@ import { generateOtp } from "../otp/index"
 
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
+/**
+ * Sends a One-Time Password (OTP) to the specified phone number via Twilio.
+ * The OTP is valid for 10 minutes.
+ *
+ * @param phoneNumber The phone number to which the OTP will be sent.
+ * @returns A promise that resolves to an object indicating the success of the operation.
+ * @throws If there is an issue with sending the SMS via Twilio.
+ */
 export const sendOtp = async (phoneNumber: string) => {
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // OTP valid for 10 minutes
     const otpCode = generateOtp();
 
     await client.messages.create({
