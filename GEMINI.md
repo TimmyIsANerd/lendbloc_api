@@ -71,7 +71,7 @@ All features have been implemented.
 This project will be developed with the following best practices in mind:
 
 *   **Code Quality:** The codebase will be type-safe, modular, and adhere to the Don't Repeat Yourself (DRY) principle to ensure maintainability and reduce redundancy.
-*   **Git Workflow:** After each task is completed, **you (the user)** should commit the changes with a clear and descriptive message per file. This practice will ensure that all changes are tracked in version control, making it easy to revert or fix issues if they arise. The agent will indicate which files should be committed and with what message.
+*   **Git Workflow:** After each file is modified, it should be committed with a clear and descriptive message. The agent will read the file and provide a commit message for the user to approve.
 
 The backend will be structured as a set of modular routes using Hono. This approach promotes modularity and allows for independent development and scaling of each feature.
 
