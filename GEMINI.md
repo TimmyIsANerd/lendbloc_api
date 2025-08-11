@@ -74,6 +74,10 @@ This section will be updated after each task to track the progress of the projec
 - [x] OTP Verification and Token Generation (`/auth/verify-login`)
 - [x] Account Recovery OTP Request (`/auth/request-password-reset`)
 - [x] Set New Password with OTP (`/auth/set-password`)
+- [x] Email Verification (`/auth/verify/email`)
+- [x] Phone Verification (`/auth/verify/phone`)
+- [x] KYC Initialization (`/auth/initialize-kyc`)
+- [x] KYC Status Confirmation (`/auth/verify-kyc`)
 
 ### `users` module
 - [x] User Profile Management (`/users/profile`)
@@ -101,6 +105,7 @@ This section will be updated after each task to track the progress of the projec
 ### `helpers`
 - [x] OTP Generation
 - [x] JSDoc for Twilio `sendOtp` function
+- [x] Shufti Pro Integration (`src/helpers/shufti/index.ts`)
 
 ### Email Templates
 - [x] Improved UI and UX-centered copy for all email templates
