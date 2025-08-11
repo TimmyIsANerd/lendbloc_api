@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 const SHUFTI_PRO_TOKEN = process.env.SHUFTI_PRO_TOKEN;
 const SHUFTI_BASE_URL = 'https://api.shuftipro.com/'
@@ -48,7 +48,7 @@ export const verifyUser = async (kycReferenceId: string) => {
     }
 
     try {
-        const response = await axios.post(`${SHUFTI_BASE_URL}/v2/verify`, payload, {
+        const response = await axios.post(SHUFTI_BASE_URL, payload, {
             headers: {
                 'Authorization': `Basic ${SHUFTI_PRO_TOKEN}`,
                 'Content-Type': 'application/json'
@@ -56,8 +56,8 @@ export const verifyUser = async (kycReferenceId: string) => {
         });
 
         return response.data;
-    } catch (error) {
-        console.error('Error verifying user:', error);
+    } catch (error: any) {
+        console.error('Error verifying user:', error.message);
         throw error;
     }
 }

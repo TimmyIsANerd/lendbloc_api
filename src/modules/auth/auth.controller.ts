@@ -222,7 +222,7 @@ export const initilizeKYC = async (c: Context) => {
     const verificationData = await verifyUser(user.kycReferenceId);
     return c.json({ verificationUrl: verificationData.verification_url });
   } catch (error) {
-    console.error('Error initializing KYC:', error);
+    console.error('Error initializing KYC:', error.message);
     return c.json({ error: 'Failed to initialize KYC verification.' }, 500);
   }
 }
