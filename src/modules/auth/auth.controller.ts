@@ -17,7 +17,7 @@ import { nanoid } from 'nanoid';
 import {
   registerUserSchema,
   loginUserSchema,
-  requestPhoneOtp,
+  requestPhoneOtpSchema,
   verifyOtpSchema,
   requestPasswordResetSchema,
   setPasswordSchema,
@@ -155,7 +155,7 @@ export const sendPhone = async (c: Context) => {
   );
 
   // Deliver SMS OTP
-  sendSms(user.phoneNumber!, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
+  await sendSms(user.phoneNumber, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
 
   return c.json({ message: 'An OTP has been sent to your phone number.' });
 }
