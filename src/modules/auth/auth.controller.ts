@@ -17,6 +17,7 @@ import { nanoid } from 'nanoid';
 import {
   registerUserSchema,
   loginUserSchema,
+  requestPhoneOtp,
   verifyOtpSchema,
   requestPasswordResetSchema,
   setPasswordSchema,
@@ -120,7 +121,7 @@ export const verifyEmail = async (c: Context) => {
 }
 
 export const sendPhone = async (c: Context) => {
-  const { phone } = c.req.valid('json' as never) as z.infer<
+  const { phone, userId } = c.req.valid('json' as never) as z.infer<
     typeof verifyPhoneSchema
   >;
 
@@ -129,7 +130,7 @@ export const sendPhone = async (c: Context) => {
     return c.json({ error: 'Phone number must be a valid E.164 formatted number' }, 400);
   }
 
-  const user = await User.findOne({ phoneNumber: phone });
+  const user = await User.findById(userId);
 
   if (!user) {
     return c.json({ error: 'User not found' }, 404);

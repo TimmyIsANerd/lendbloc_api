@@ -14,13 +14,10 @@ export const verifyEmailSchema = z.object({
   otp: z.string().length(6),
 });
 
-export const requestPhoneOtp = z.object({
-  phone: z.string(),
-})
-
 export const verifyPhoneSchema = z.object({
+  userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
   phone: z.string(),
-  otp: z.string().length(6),
+  otp: z.string().length(6).optional(),
 });
 
 export const loginUserSchema = z.object({
