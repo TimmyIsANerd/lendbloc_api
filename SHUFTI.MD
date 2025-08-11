@@ -1,0 +1,12 @@
+## ID Document Verification
+https://developers.shuftipro.com/docs/user_identification_authentication/document_verification/how_it_works
+https://developers.shuftipro.com/docs/user_identification_authentication/document_verification/onsite
+
+## Facial Biometrics Verification
+https://developers.shuftipro.com/docs/user_identification_authentication/facial_biometrics/how_it_works
+https://developers.shuftipro.com/docs/user_identification_authentication/facial_biometrics/onsite
+
+
+## Standard Address Verification
+https://developers.shuftipro.com/docs/user_identification_authentication/address_verification_and_validation/standard_address_verification/how_it_works
+https://developers.shuftipro.com/docs/user_identification_authentication/address_verification_and_validation/standard_address_verification/verification_parameters

@@ -32,6 +32,7 @@
     "ecpair": "^3.0.0",
     "handlebars": "^4.7.8",
     "hono": "^4.8.12",
+    "hono-rate-limiter": "^0.4.2",
     "mailtrap": "^4.2.0",
     "mongoose": "^8.17.0",
     "resend": "^6.0.1",

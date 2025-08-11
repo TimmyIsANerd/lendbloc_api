@@ -1,14 +1,11 @@
 import { Hono } from 'hono';
-import { shuftiSystems } from './webhooks.controller';
+import { shuftiCallback, shuftiRedirect } from './webhooks.controller';
 
 const webhooks = new Hono();
 
-
 // Handle Callbacks
-webhooks.get("/shufti/callback", shuftiSystems);
+webhooks.post("/shufti/callback", shuftiCallback);
 
-webhooks.get("/")
-
-
+webhooks.get("/shufti/redirect", shuftiRedirect);
 
 export default webhooks;

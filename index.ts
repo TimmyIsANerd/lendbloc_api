@@ -10,6 +10,7 @@ import savings from './src/modules/savings/savings.routes';
 import exchange from './src/modules/exchange/exchange.routes';
 import notifications from './src/modules/notifications/notifications.routes';
 import admin from './src/modules/admin/admin.routes';
+import webhooks from './src/modules/webhooks/webhooks.routes';
 import connectDB from './src/config/db';
 
 connectDB();
@@ -29,6 +30,11 @@ app.use(cors({
     maxAge: 86400,
 }))
 
+// Routes
+
+app.get("/", (c) => {
+    return c.text("Lendbloc API is Live 🚀", 200)
+})
 
 app.route('/api/v1/auth', auth);
 app.route('/api/v1/users', users);
@@ -38,6 +44,7 @@ app.route('/api/v1/savings', savings);
 app.route('/api/v1/exchange', exchange);
 app.route('/api/v1/notifications', notifications);
 app.route('/api/v1/admin', admin);
+app.route('/api/v1/webhooks', webhooks);
 
 const now = new Date();
 const formattedDate = now.toLocaleString('en-US', {

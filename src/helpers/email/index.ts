@@ -1,9 +1,8 @@
 import { MailtrapClient } from 'mailtrap';
 
 const client = new MailtrapClient({
-    token: process.env.MAILTRAP_TOKEN!,
+    token: process.env.MAILTRAP_TOKEN ?? '',
 })
-
 
 /**
  * Sends an email using Mailtrap's API.
@@ -17,6 +16,8 @@ const client = new MailtrapClient({
  * 3 retries with a 1 second delay between each retry.
  */
 export const sendEmail = async (to: string, subject: string, body: string) => {
+
+
     const maxRetries = 3;
     let retries = 0;
 
@@ -31,11 +32,13 @@ export const sendEmail = async (to: string, subject: string, body: string) => {
                 subject,
                 html: body
             })
+
+            console.log(`Email sent successfully: ${to}, Subject: ${subject}`);
             break;
         } catch (error) {
             console.error('Error sending email:', error);
             retries++;
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 4000)); // Delay for 4 seconds before retrying
         }
     }
 

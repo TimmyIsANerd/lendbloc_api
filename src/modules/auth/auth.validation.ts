@@ -5,7 +5,6 @@ export const registerUserSchema = z.object({
   fullName: z.string(),
   dateOfBirth: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Date of birth must be in DD/MM/YYYY format"),
   email: z.email(),
-  socialIssuanceNumber: z.string(),
   phone: z.string().optional(),
   password: z.string().min(8),
 });
@@ -15,11 +14,14 @@ export const verifyEmailSchema = z.object({
   otp: z.string().length(6),
 });
 
+export const requestPhoneOtp = z.object({
+  phone: z.string(),
+})
+
 export const verifyPhoneSchema = z.object({
   phone: z.string(),
   otp: z.string().length(6),
 });
-
 
 export const loginUserSchema = z.object({
   email: z.email().optional(),

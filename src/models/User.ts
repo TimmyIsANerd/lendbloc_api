@@ -5,8 +5,7 @@ export interface IUser extends Document {
   fullName: string;
   dateOfBirth: string;
   email: string;
-  socialIssuanceNumber: string;
-  phoneNumber?: string;
+  phoneNumber: string;
   passwordHash: string;
   kycReferenceId: string;
   isKycVerified: boolean;
@@ -22,8 +21,7 @@ const UserSchema: Schema = new Schema(
     fullName: { type: String, required: true },
     dateOfBirth: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    socialIssuanceNumber: { type: String, required: true, unique: true },
-    phoneNumber: { type: String, unique: true, sparse: true }, // sparse allows nulls to not violate unique constraint
+    phoneNumber: { type: String, required: true, unique: true },
     passwordHash: { type: String, required: true },
     kycReferenceId: { type: String, unique: true, required: true },
     isKycVerified: { type: Boolean, default: false },
