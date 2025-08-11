@@ -10,6 +10,7 @@ import {
   loginUserSchema,
   verifyOtpSchema,
   initializeKYCSchema,
+  confirmKYCStatusSchema,
   requestPasswordResetSchema,
   setPasswordSchema,
 } from './auth.validation';
@@ -18,7 +19,8 @@ import {
   verifyEmail,
   sendPhone,
   verifyPhone,
-  initilizeKYC,
+  initializeKYC,
+  confirmKYCStatus,
   loginUser,
   verifyLogin,
   requestPasswordReset,
@@ -29,13 +31,13 @@ const auth = new Hono();
 
 const phoneLimiter = rateLimiter({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  limit: 1,
+  limit: 5,
   standardHeaders: 'draft-6',
   keyGenerator: (c) => {
-    const { userId } = c.req.valid('json' as never) as z.infer<
+    const { phone } = c.req.valid('json' as never) as z.infer<
       typeof requestPhoneOtpSchema
     >;
-    return userId
+    return phone
   },
 });
 
@@ -56,7 +58,8 @@ auth.post('/register', zValidator('json', registerUserSchema), registerUser);
 auth.post("/verify/email", zValidator('json', verifyEmailSchema), verifyEmail);
 auth.post("/send/phone", zValidator('json', requestPhoneOtpSchema), phoneLimiter, sendPhone);
 auth.post("/verify/phone", zValidator('json', verifyPhoneSchema), verifyPhone);
-auth.post("/initialize-kyc", zValidator('json', initializeKYCSchema), initilizeKYC);
+auth.post("/initialize-kyc", zValidator('json', initializeKYCSchema), initializeKYC);
+auth.post("/verify-kyc", zValidator('json', confirmKYCStatusSchema), confirmKYCStatus)
 auth.post('/login', zValidator('json', loginUserSchema), loginUser);
 auth.post('/verify-login', zValidator('json', verifyOtpSchema), verifyLogin);
 auth.post(
