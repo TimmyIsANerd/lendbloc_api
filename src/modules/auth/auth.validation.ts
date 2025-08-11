@@ -38,13 +38,11 @@ export const verifyOtpSchema = z.object({
 });
 
 export const requestPasswordResetSchema = z.object({
-  email: z.email().optional(),
-  phone: z.string().optional(),
+  email: z.email()
 });
 
 export const setPasswordSchema = z.object({
-  email: z.email().optional(),
-  phone: z.string().optional(),
+  email: z.email(),
   otp: z.string().length(5),
   password: z.string().min(8),
 });

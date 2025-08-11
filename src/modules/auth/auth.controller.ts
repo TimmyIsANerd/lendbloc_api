@@ -10,6 +10,7 @@ import { setCookie } from 'hono/cookie';
 import { generateOtp } from '../../helpers/otp/index';
 import { sendEmail } from '../../helpers/email/index';
 import { sendSms } from '../../helpers/twilio/index';
+import { passwordResetRequestEmail } from '../../templates/password-reset-request';
 import { otpVerificationEmail } from '../../templates/otp-verification';
 import { initializeWalletSystem } from '../../helpers/wallet/index';
 import { nanoid } from 'nanoid';
@@ -155,20 +156,30 @@ export const sendPhone = async (c: Context) => {
   );
 
   // Deliver SMS OTP
-  await sendSms(user.phoneNumber, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
+  // await sendSms(user.phoneNumber, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
 
   return c.json({ message: 'An OTP has been sent to your phone number.' });
 }
 
 export const verifyPhone = async (c: Context) => {
-  const { userId, otp } = c.req.valid('json' as never) as z.infer<
+  const { userId, otp, phone } = c.req.valid('json' as never) as z.infer<
     typeof verifyPhoneSchema
   >;
+
+  const phoneRegex = /^\+\d{1,15}$/;
+  
+  if (!phoneRegex.test(phone)) {
+    return c.json({ error: 'Phone number must be a valid E.164 formatted number' }, 400);
+  }
 
   const user = await User.findById(userId);
 
   if (!user) {
     return c.json({ error: 'User not found' }, 404);
+  }
+
+  if (user.phoneNumber !== phone) {
+    return c.json({ error: 'Phone number does not match' }, 400);
   }
 
   const storedOtp = await Otp.findOne({
@@ -302,43 +313,7 @@ export const verifyLogin = async (c: Context) => {
   return c.json({ accessToken });
 };
 
-export const requestPasswordReset = async (c: Context) => {
-  const { email, phone } = c.req.valid('json' as never) as z.infer<
-    typeof requestPasswordResetSchema
-  >;
 
-  if (!email && !phone) {
-    return c.json({ error: 'Email or phone number is required' }, 400);
-  }
-
-  if (email && phone) {
-    return c.json({ error: 'Only one of email or phone number should be provided' }, 400);
-  }
-
-  const user = await User.findOne({
-    $or: [
-      { email: email },
-      { phoneNumber: phone },
-    ],
-  });
-
-  if (!user) {
-    return c.json({ error: 'User not found' }, 404);
-  }
-
-  const otpCode = Math.floor(10000 + Math.random() * 90000).toString(); // 5-digit OTP
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // OTP valid for 10 minutes
-
-  console.log("OTP Code: ", otpCode);
-
-  await Otp.findOneAndUpdate(
-    { userId: user._id },
-    { code: otpCode, expiresAt },
-    { upsert: true, new: true }
-  );
-
-  return c.json({ message: 'Password reset requested. Check your email/phone for OTP.' });
-};
 
 export const setPassword = async (c: Context) => {
   const { email, phone, otp, password } = c.req.valid('json' as never) as z.infer<

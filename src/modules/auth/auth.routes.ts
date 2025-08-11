@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { rateLimiter } from 'hono-rate-limiter';
 import {
@@ -29,7 +30,9 @@ const phoneLimiter = rateLimiter({
   limit: 1,
   standardHeaders: 'draft-6',
   keyGenerator: (c) => {
-    const { userId } = c.req.valid('json' as never)
+    const { userId } = c.req.valid('json' as never) as z.infer<
+      typeof requestPhoneOtpSchema
+    >;
     return userId
   },
 });
