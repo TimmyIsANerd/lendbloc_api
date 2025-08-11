@@ -1,12 +1,4 @@
-import twilio from 'twilio';
-
-const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN,
-    {
-        autoRetry: true,
-        maxRetries: 5,
-        logLevel: 'debug',
-    }
-);
+import axios from 'axios';
 
 /**
  * Sends an SMS message to the specified phone number via Twilio.
@@ -17,18 +9,36 @@ const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TO
  * @throws If there is an issue with sending the SMS via Twilio.
  */
 export const sendSms = async (phoneNumber: string, message: string) => {
-    try {
-        const res = await client.messages.create({
-            body: message,
-            from: process.env.TWILIO_PHONE_NUMBER,
-            to: phoneNumber,
-        });
+    const maxRetries = 3;
+    let retries = 0;
 
-        console.log(res)
+    const url = `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`;
 
-        return { message: 'SMS sent successfully.' };
-    } catch (error) {
-        console.error('Error sending SMS:', error);
-        throw error;
+    const data = new URLSearchParams();
+    data.append('To', phoneNumber);
+    data.append('From', process.env.TWILIO_PHONE_NUMBER!);
+    data.append('Body', message);
+
+    while (retries < maxRetries) {
+        try {
+            await axios.post(url, data, {
+                auth: {
+                    username: process.env.TWILIO_ACCOUNT_SID!,
+                    password: process.env.TWILIO_AUTH_TOKEN!
+                }
+            });
+
+            console.log(`SMS sent successfully to: ${phoneNumber}`);
+            return { message: 'SMS sent successfully.' };
+        } catch (error) {
+            console.error('Error sending SMS:', error);
+            retries++;
+            await new Promise(resolve => setTimeout(resolve, 5000)); // Delay for 5 seconds before retrying
+        }
+    }
+
+    if (retries === maxRetries) {
+        console.error('Failed to send SMS after', maxRetries, 'retries');
+        throw new Error('Failed to send SMS');
     }
 };
