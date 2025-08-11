@@ -30,8 +30,8 @@ export const sendSms = async (phoneNumber: string, message: string) => {
 
             console.log(`SMS sent successfully to: ${phoneNumber}`);
             return { message: 'SMS sent successfully.' };
-        } catch (error) {
-            console.error('Error sending SMS:', error);
+        } catch (error: any) {
+            console.error('Error sending SMS:', error.response.data);
             retries++;
             await new Promise(resolve => setTimeout(resolve, 5000)); // Delay for 5 seconds before retrying
         }
