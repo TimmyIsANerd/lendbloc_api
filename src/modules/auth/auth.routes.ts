@@ -9,6 +9,7 @@ import {
   verifyPhoneSchema,
   loginUserSchema,
   verifyOtpSchema,
+  initializeKYCSchema,
   requestPasswordResetSchema,
   setPasswordSchema,
 } from './auth.validation';
@@ -17,6 +18,7 @@ import {
   verifyEmail,
   sendPhone,
   verifyPhone,
+  initilizeKYC,
   loginUser,
   verifyLogin,
   requestPasswordReset,
@@ -37,15 +39,30 @@ const phoneLimiter = rateLimiter({
   },
 });
 
+const passwordRequestLimiter = rateLimiter({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  limit: 1,
+  standardHeaders: 'draft-6',
+  keyGenerator: (c) => {
+    const { email } = c.req.valid('json' as never) as z.infer<
+      typeof requestPasswordResetSchema
+    >;
+    return email
+  },
+});
+
+
 auth.post('/register', zValidator('json', registerUserSchema), registerUser);
 auth.post("/verify/email", zValidator('json', verifyEmailSchema), verifyEmail);
 auth.post("/send/phone", zValidator('json', requestPhoneOtpSchema), phoneLimiter, sendPhone);
 auth.post("/verify/phone", zValidator('json', verifyPhoneSchema), verifyPhone);
+auth.post("/initialize-kyc", zValidator('json', initializeKYCSchema), initilizeKYC);
 auth.post('/login', zValidator('json', loginUserSchema), loginUser);
 auth.post('/verify-login', zValidator('json', verifyOtpSchema), verifyLogin);
 auth.post(
   '/request-password-reset',
   zValidator('json', requestPasswordResetSchema),
+  passwordRequestLimiter,
   requestPasswordReset
 );
 auth.post('/set-password', zValidator('json', setPasswordSchema), setPassword);

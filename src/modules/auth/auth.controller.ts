@@ -14,6 +14,7 @@ import { otpVerificationEmail } from '../../templates/otp-verification';
 import { passwordResetRequestEmail } from '../../templates/password-reset-request';
 import { initializeWalletSystem } from '../../helpers/wallet/index';
 import { nanoid } from 'nanoid';
+import { verifyUser } from '../../helpers/shufti';
 
 import {
   registerUserSchema,
@@ -23,7 +24,8 @@ import {
   requestPasswordResetSchema,
   setPasswordSchema,
   verifyEmailSchema,
-  verifyPhoneSchema
+  verifyPhoneSchema,
+  initializeKYCSchema,
 } from './auth.validation';
 
 export const registerUser = async (c: Context) => {
@@ -167,7 +169,7 @@ export const verifyPhone = async (c: Context) => {
   >;
 
   const phoneRegex = /^\+\d{1,15}$/;
-  
+
   if (!phoneRegex.test(phone)) {
     return c.json({ error: 'Phone number must be a valid E.164 formatted number' }, 400);
   }
@@ -196,6 +198,33 @@ export const verifyPhone = async (c: Context) => {
   await User.findByIdAndUpdate(user._id, { isPhoneNumberVerified: true });
 
   return c.json({ message: 'Phone number verified successfully' });
+}
+
+export const initilizeKYC = async (c: Context) => {
+  const { userId } = c.req.valid('json' as never) as z.infer<
+    typeof initializeKYCSchema
+  >;
+
+  // Find User using UserId
+  const user = await User.findById(userId);
+
+  if (!user) {
+    return c.json({ error: 'User not found' }, 404);
+  }
+
+  // Check if they haven't verified kyc
+  if (user.isKycVerified) {
+    return c.json({ error: 'User is already verified. Please login.' }, 400);
+  }
+
+  // If Kyc not verified, use shufti's response to provide verification page
+  try {
+    const verificationData = await verifyUser(user.kycReferenceId);
+    return c.json({ verificationUrl: verificationData.verification_url });
+  } catch (error) {
+    console.error('Error initializing KYC:', error);
+    return c.json({ error: 'Failed to initialize KYC verification.' }, 500);
+  }
 }
 
 export const loginUser = async (c: Context) => {
@@ -287,7 +316,10 @@ export const verifyLogin = async (c: Context) => {
 
   if (!storedOtp || storedOtp.code !== otp || storedOtp.expiresAt < new Date()) {
     // If OTP is invalid or expired, delete the OTP document
-    await Otp.deleteOne({ _id: storedOtp?._id });
+    if (storedOtp && storedOtp.expiresAt < new Date()) {
+      await Otp.deleteOne({ _id: storedOtp?._id });
+    }
+
     return c.json({ error: 'Invalid or expired OTP' }, 400);
   }
 
@@ -343,29 +375,24 @@ export const requestPasswordReset = async (c: Context) => {
     { upsert: true, new: true }
   );
 
-    // Send Password Reset Email
+  // Send Password Reset Email
   sendEmail(user.email, '[LENDBLOCK] Password Reset Request', passwordResetRequestEmail(otpCode, 10));
 
   return c.json({ message: 'Password reset requested. Check your email/phone for OTP.' });
 };
 
 export const setPassword = async (c: Context) => {
-  const { email, phone, otp, password } = c.req.valid('json' as never) as z.infer<
+  const { email, otp, password } = c.req.valid('json' as never) as z.infer<
     typeof setPasswordSchema
   >;
 
-  if (!email && !phone) {
-    return c.json({ error: 'Email or phone number is required' }, 400);
-  }
-
-  if (email && phone) {
-    return c.json({ error: 'Only one of email or phone number should be provided' }, 400);
+  if (!email) {
+    return c.json({ error: 'Email is required' }, 400);
   }
 
   const user = await User.findOne({
     $or: [
       { email: email },
-      { phoneNumber: phone },
     ],
   }).select('passwordHash');
 
@@ -378,7 +405,9 @@ export const setPassword = async (c: Context) => {
   });
 
   if (!storedOtp || storedOtp.code !== otp || storedOtp.expiresAt < new Date()) {
-    await Otp.deleteOne({ _id: storedOtp?._id });
+    if (storedOtp && storedOtp.expiresAt < new Date()) {
+      await Otp.deleteOne({ _id: storedOtp?._id });
+    }
 
     return c.json({ error: 'Invalid or expired OTP' }, 400);
   }
