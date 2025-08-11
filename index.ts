@@ -60,7 +60,7 @@ const formattedDate = now.toLocaleString('en-US', {
 
 console.log(`
 ==========================================
-🚀 Derhex OTC API is running!
+🚀 LendBloc API is running!
 🕒 Deployed at: ${formattedDate}
 ==========================================
 `);
