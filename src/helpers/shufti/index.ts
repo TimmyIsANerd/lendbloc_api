@@ -1,9 +1,10 @@
 import axios, { AxiosError } from 'axios';
 
 const SHUFTI_PRO_TOKEN = process.env.SHUFTI_PRO_TOKEN;
-const SHUFTI_BASE_URL = 'https://api.shuftipro.com/'
+const SHUFTI_BASE_URL = 'https://api.shuftipro.com'
 
 export const verifyUser = async (kycReferenceId: string) => {
+    console.log(SHUFTI_PRO_TOKEN)
     let payload = {
         reference: kycReferenceId,
         callback_url: `${process.env.PORT_FORWARD_URL}/api/v1/webhooks/shufti/callback`,
