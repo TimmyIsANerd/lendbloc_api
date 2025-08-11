@@ -26,6 +26,7 @@ import {
   verifyEmailSchema,
   verifyPhoneSchema,
   initializeKYCSchema,
+  confirmKYCStatusSchema
 } from './auth.validation';
 
 export const registerUser = async (c: Context) => {
@@ -107,6 +108,11 @@ export const verifyEmail = async (c: Context) => {
     return c.json({ error: 'User not found' }, 404);
   }
 
+  // Check if Email is already verified
+  if (user.isEmailVerified) {
+    return c.json({ error: 'Email is already verified' }, 400);
+  }
+
   const storedOtp = await Otp.findOne({
     userId: user._id,
   });
@@ -137,6 +143,11 @@ export const sendPhone = async (c: Context) => {
 
   if (!user) {
     return c.json({ error: 'User not found' }, 404);
+  }
+
+  // Check if Phone Number is already verified
+  if (user.isPhoneNumberVerified) {
+    return c.json({ error: 'Phone number is already verified' }, 400);
   }
 
   const existingOtp = await Otp.findOne({ userId: user._id });
@@ -200,7 +211,7 @@ export const verifyPhone = async (c: Context) => {
   return c.json({ message: 'Phone number verified successfully' });
 }
 
-export const initilizeKYC = async (c: Context) => {
+export const initializeKYC = async (c: Context) => {
   const { userId } = c.req.valid('json' as never) as z.infer<
     typeof initializeKYCSchema
   >;
@@ -218,13 +229,62 @@ export const initilizeKYC = async (c: Context) => {
   }
 
   // If Kyc not verified, use shufti's response to provide verification page
-  try {
-    const verificationData = await verifyUser(user.kycReferenceId);
-    return c.json({ verificationUrl: verificationData.verification_url });
-  } catch (error) {
-    console.error('Error initializing KYC:', error.message);
-    return c.json({ error: 'Failed to initialize KYC verification.' }, 500);
+  // try {
+  //   const verificationData = await verifyUser(user.kycReferenceId);
+  //   return c.json({ verificationUrl: verificationData.verification_url });
+  // } catch (error: any) {
+  //   console.error('Error initializing KYC:', error.message);
+  //   return c.json({ error: 'Failed to initialize KYC verification.' }, 500);
+  // }
+
+
+  return c.json({ message: "KYC Initialized" }, 200)
+}
+
+export const confirmKYCStatus = async (c: Context) => {
+  const { userId, clientDevice } = c.req.valid('json' as never) as z.infer<
+    typeof confirmKYCStatusSchema
+  >;
+
+  // Find User using UserId
+  const user = await User.findById(userId);
+
+  if (!user) {
+    return c.json({ error: 'User not found' }, 404);
   }
+
+  // Check if they haven't verified kyc
+  if (user.isKycVerified) {
+    return c.json({ error: 'User is already verified. Please login.' }, 400);
+  }
+
+  // Go ahead and update user record to isKYCVerified to true
+  await User.findByIdAndUpdate(user._id, { isKycVerified: true });
+
+  // If Kyc not verified, since shufti doesn't work right now, send access and refresh token to user to allow dashboard access
+  const secret = process.env.JWT_SECRET || 'your-secret-key';
+  const accessToken = await sign({ userId: user._id, exp: Math.floor(Date.now() / 1000) + (60 * 15) }, secret); // 15 minutes
+  const refreshToken = await sign({ userId: user._id, exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) }, secret); // 7 days
+
+
+  await RefreshToken.create({
+    userId: user._id,
+    token: refreshToken,
+    expiresAt: new Date(Date.now() + (1000 * 60 * 60 * 24 * 3)), // 3 Days
+  });
+
+  if (clientDevice === "mobile") {
+    return c.json({ accessToken, refreshToken, message: "Login & KYC verification successful" });
+  }
+
+  setCookie(c, 'refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Strict',
+    maxAge: 60 * 60 * 24 * 3, // 3 days
+  });
+
+  return c.json({ accessToken, message: "Login & KYC verification successful" });
 }
 
 export const loginUser = async (c: Context) => {
@@ -253,12 +313,11 @@ export const loginUser = async (c: Context) => {
   }
 
   // Check if User's Email, Phone & Identity have been verified
-  if (!user.isEmailVerified || !user.isPhoneNumberVerified || !user.isKycVerified) {
+  if (!user.isEmailVerified || !user.isPhoneNumberVerified) {
     return c.json({
       error: 'User is not verified', verificationStatus: {
         email: user.isEmailVerified ? "verified" : "not verified",
-        phone: user.isPhoneNumberVerified ? "verified" : "not verified",
-        identity: user.isKycVerified ? "verified" : "not verified"
+        phone: user.isPhoneNumberVerified ? "verified" : "not verified"
       }
     }, 401);
   }
@@ -283,11 +342,14 @@ export const loginUser = async (c: Context) => {
     { upsert: true, new: true }
   );
 
+  // Send Email to User
+  // sendEmail(user.email, '[LENDBLOCK] Login OTP', otpVerificationEmail(otpCode, 10));
+
   return c.json({ message: 'An OTP has been sent to your email/phone.' });
 };
 
 export const verifyLogin = async (c: Context) => {
-  const { email, phone, otp } = c.req.valid('json' as never) as z.infer<
+  const { email, phone, otp, clientDevice } = c.req.valid('json' as never) as z.infer<
     typeof verifyOtpSchema
   >;
 
@@ -332,14 +394,18 @@ export const verifyLogin = async (c: Context) => {
   await RefreshToken.create({
     userId: user._id,
     token: refreshToken,
-    expiresAt: new Date(Date.now() + (1000 * 60 * 60 * 24 * 7)),
+    expiresAt: new Date(Date.now() + (1000 * 60 * 60 * 24 * 3)), // 3 Days
   });
+
+  if (clientDevice === "mobile") {
+    return c.json({ accessToken, refreshToken });
+  }
 
   setCookie(c, 'refreshToken', refreshToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'Strict',
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 60 * 60 * 24 * 3, // 3 days
   });
 
   return c.json({ accessToken });
