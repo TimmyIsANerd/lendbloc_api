@@ -29,6 +29,11 @@ export const initializeKYCSchema = z.object({
   userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
 })
 
+export const confirmKYCStatusSchema = z.object({
+  clientDevice: z.enum(['web', 'mobile']),
+  userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
+})
+
 export const loginUserSchema = z.object({
   email: z.email().optional(),
   phone: z.string().optional(),
@@ -39,6 +44,7 @@ export const verifyOtpSchema = z.object({
   email: z.email().optional(),
   phone: z.string().optional(),
   otp: z.string().length(6),
+  clientDevice: z.enum(['web', 'mobile']),
 });
 
 export const requestPasswordResetSchema = z.object({
