@@ -74,6 +74,7 @@ This section will be updated after each task to track the progress of the projec
 - [x] OTP Verification and Token Generation (`/auth/verify-login`)
 - [x] Account Recovery OTP Request (`/auth/request-password-reset`)
 - [x] Set New Password with OTP (`/auth/set-password`)
+- [x] Token Refresh (`/auth/refresh-token`)
 - [x] Email Verification (`/auth/verify/email`)
 - [x] Phone Verification (`/auth/verify/phone`)
 - [x] KYC Initialization (`/auth/initialize-kyc`)

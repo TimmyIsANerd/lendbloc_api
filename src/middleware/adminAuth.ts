@@ -7,7 +7,7 @@ export const adminAuthMiddleware = (requiredRole?: AdminRole) => {
     const token = c.req.header('Authorization')?.replace('Bearer ', '');
 
     if (!token) {
-      return c.json({ error: 'Unauthorized' }, 401);
+      return c.json({ error: 'Missing Token', code: 'MISSING_TOKEN' }, 401);
     }
 
     const secret = process.env.JWT_SECRET || 'your-secret-key';
@@ -17,12 +17,12 @@ export const adminAuthMiddleware = (requiredRole?: AdminRole) => {
       c.set('jwtPayload', decoded);
 
       if (requiredRole && decoded.role !== requiredRole) {
-        return c.json({ error: 'Forbidden' }, 403);
+        return c.json({ error: 'Forbidden', code: 'FORBIDDEN_ROLE' }, 403);
       }
 
       await next();
     } catch (error) {
-      return c.json({ error: 'Unauthorized' }, 401);
+      return c.json({ error: 'Invalid or Expired Token', code: 'INVALID_OR_EXPIRED_TOKEN' }, 401);
     }
   };
 };

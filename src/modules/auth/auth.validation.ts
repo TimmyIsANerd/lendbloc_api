@@ -35,7 +35,7 @@ export const confirmKYCStatusSchema = z.object({
 })
 
 export const loginUserSchema = z.object({
-  email: z.email().optional(),
+  email: z.string().optional(),
   phone: z.string().optional(),
   password: z.string(),
 });
@@ -55,4 +55,13 @@ export const setPasswordSchema = z.object({
   email: z.email(),
   otp: z.string().length(5),
   password: z.string().min(8),
+});
+
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string(),
+  clientDevice: z.enum(['web', 'mobile']),
+});
+
+export const logoutSchema = z.object({
+  clientDevice: z.enum(['web', 'mobile']),
 });

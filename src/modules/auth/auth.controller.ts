@@ -5,8 +5,8 @@ import Otp from '../../models/Otp';
 import RefreshToken from '../../models/RefreshToken';
 import Wallet from '../../models/Wallet';
 import bcrypt from 'bcrypt';
-import { sign } from 'hono/jwt';
-import { setCookie } from 'hono/cookie';
+import { sign, verify } from 'hono/jwt';
+import { setCookie, deleteCookie } from 'hono/cookie';
 import { generateOtp } from '../../helpers/otp/index';
 import { sendEmail } from '../../helpers/email/index';
 import { sendSms } from '../../helpers/twilio/index';
@@ -26,7 +26,9 @@ import {
   verifyEmailSchema,
   verifyPhoneSchema,
   initializeKYCSchema,
-  confirmKYCStatusSchema
+  confirmKYCStatusSchema,
+  refreshTokenSchema,
+  logoutSchema
 } from './auth.validation';
 
 export const registerUser = async (c: Context) => {
@@ -169,7 +171,7 @@ export const sendPhone = async (c: Context) => {
   );
 
   // Deliver SMS OTP
-  // await sendSms(user.phoneNumber, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
+  await sendSms(user.phoneNumber, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
 
   return c.json({ message: 'An OTP has been sent to your phone number.' });
 }
@@ -342,8 +344,15 @@ export const loginUser = async (c: Context) => {
     { upsert: true, new: true }
   );
 
-  // Send Email to User
-  // sendEmail(user.email, '[LENDBLOCK] Login OTP', otpVerificationEmail(otpCode, 10));
+  if (email) {
+    // Send Email to User
+    sendEmail(user.email, '[LENDBLOCK] Login OTP', otpVerificationEmail(otpCode, 10));
+  } else {
+    // Send SMS to User
+    await sendSms(user.phoneNumber, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
+  }
+
+
 
   return c.json({ message: 'An OTP has been sent to your email/phone.' });
 };
@@ -481,7 +490,7 @@ export const setPassword = async (c: Context) => {
   const passwordMatch = await bcrypt.compare(password, user.passwordHash);
 
   if (passwordMatch) {
-    return c.json({ error: 'New password can\'t be the same as old password' }, 400);
+    return c.json({ error: "New password can't be the same as old password" }, 400);
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
@@ -491,4 +500,82 @@ export const setPassword = async (c: Context) => {
   await Otp.deleteOne({ _id: storedOtp._id });
 
   return c.json({ message: 'Password set successfully' });
+};
+
+export const refreshToken = async (c: Context) => {
+  const { refreshToken, clientDevice } = c.req.valid('json' as never) as z.infer<
+    typeof refreshTokenSchema
+  >;
+
+  if (!refreshToken) {
+    return c.json({ error: 'Refresh token is required' }, 400);
+  }
+
+  try {
+    const secret = process.env.JWT_SECRET || 'your-secret-key';
+    const decoded: any = await verify(refreshToken, secret);
+
+    const storedRefreshToken = await RefreshToken.findOne({
+      userId: decoded.userId,
+      token: refreshToken,
+      expiresAt: { $gt: new Date() },
+    });
+
+    if (!storedRefreshToken) {
+      return c.json({ error: 'Invalid or expired refresh token' }, 401);
+    }
+
+    // Invalidate the old refresh token
+    await RefreshToken.deleteOne({ _id: storedRefreshToken._id });
+
+    const newAccessToken = await sign({ userId: decoded.userId, exp: Math.floor(Date.now() / 1000) + (60 * 15) }, secret);
+    const newRefreshToken = await sign({ userId: decoded.userId, exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) }, secret);
+
+    await RefreshToken.create({
+      userId: decoded.userId,
+      token: newRefreshToken,
+      expiresAt: new Date(Date.now() + (1000 * 60 * 60 * 24 * 3)), // 3 Days
+    });
+
+    if (clientDevice === "web") {
+      setCookie(c, 'refreshToken', newRefreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Strict',
+        maxAge: 60 * 60 * 24 * 3, // 3 days
+      });
+
+      return c.json({ accessToken: newAccessToken });
+    }
+
+    return c.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
+  } catch (error) {
+    console.error('Error refreshing token:', error);
+    return c.json({ error: 'Invalid or expired refresh token' }, 401);
+  }
+};
+
+export const logout = async (c: Context) => {
+  const { clientDevice } = c.req.valid('json' as never) as z.infer<
+    typeof logoutSchema
+  >;
+
+  const jwtPayload = c.get('jwtPayload');
+
+  if (!jwtPayload || !jwtPayload.userId) {
+    return c.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, 401);
+  }
+
+  try {
+    await RefreshToken.deleteMany({ userId: jwtPayload.userId });
+
+    if (clientDevice === "web") {
+      deleteCookie(c, 'refreshToken');
+    }
+
+    return c.json({ message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Error during logout:', error);
+    return c.json({ error: 'An unexpected error occurred during logout.' }, 500);
+  }
 };

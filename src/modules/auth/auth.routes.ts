@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { rateLimiter } from 'hono-rate-limiter';
+import { authMiddleware } from '../../middleware/auth';
 import {
   registerUserSchema,
   verifyEmailSchema,
@@ -13,6 +14,8 @@ import {
   confirmKYCStatusSchema,
   requestPasswordResetSchema,
   setPasswordSchema,
+  refreshTokenSchema,
+  logoutSchema,
 } from './auth.validation';
 import {
   registerUser,
@@ -25,13 +28,15 @@ import {
   verifyLogin,
   requestPasswordReset,
   setPassword,
+  refreshToken,
+  logout,
 } from './auth.controller';
 
 const auth = new Hono();
 
 const phoneLimiter = rateLimiter({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  limit: 5,
+  limit: 1,
   standardHeaders: 'draft-6',
   keyGenerator: (c) => {
     const { phone } = c.req.valid('json' as never) as z.infer<
@@ -69,5 +74,7 @@ auth.post(
   requestPasswordReset
 );
 auth.post('/set-password', zValidator('json', setPasswordSchema), setPassword);
+auth.post('/refresh-token', zValidator('json', refreshTokenSchema), refreshToken);
+auth.post('/logout', authMiddleware, zValidator('json', logoutSchema), logout);
 
 export default auth;
