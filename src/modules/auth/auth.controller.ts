@@ -122,7 +122,7 @@ export const verifyEmail = async (c: Context) => {
 
 export const sendPhone = async (c: Context) => {
   const { phone, userId } = c.req.valid('json' as never) as z.infer<
-    typeof verifyPhoneSchema
+    typeof requestPhoneOtpSchema
   >;
 
   const phoneRegex = /^\+[1-9]\d{1,14}$/;
@@ -161,11 +161,11 @@ export const sendPhone = async (c: Context) => {
 }
 
 export const verifyPhone = async (c: Context) => {
-  const { phone, otp } = c.req.valid('json' as never) as z.infer<
+  const { userId, otp } = c.req.valid('json' as never) as z.infer<
     typeof verifyPhoneSchema
   >;
 
-  const user = await User.findOne({ phoneNumber: phone });
+  const user = await User.findById(userId);
 
   if (!user) {
     return c.json({ error: 'User not found' }, 404);
