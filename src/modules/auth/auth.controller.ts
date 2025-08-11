@@ -10,8 +10,8 @@ import { setCookie } from 'hono/cookie';
 import { generateOtp } from '../../helpers/otp/index';
 import { sendEmail } from '../../helpers/email/index';
 import { sendSms } from '../../helpers/twilio/index';
-import { passwordResetRequestEmail } from '../../templates/password-reset-request';
 import { otpVerificationEmail } from '../../templates/otp-verification';
+import { passwordResetRequestEmail } from '../../templates/password-reset-request';
 import { initializeWalletSystem } from '../../helpers/wallet/index';
 import { nanoid } from 'nanoid';
 
@@ -313,7 +313,41 @@ export const verifyLogin = async (c: Context) => {
   return c.json({ accessToken });
 };
 
+export const requestPasswordReset = async (c: Context) => {
+  const { email } = c.req.valid('json' as never) as z.infer<
+    typeof requestPasswordResetSchema
+  >;
 
+  if (!email) {
+    return c.json({ error: 'Email is required' }, 400);
+  }
+
+  const user = await User.findOne({
+    $or: [
+      { email: email },
+    ],
+  });
+
+  if (!user) {
+    return c.json({ error: 'User not found' }, 404);
+  }
+
+  const otpCode = Math.floor(10000 + Math.random() * 90000).toString(); // 5-digit OTP
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // OTP valid for 10 minutes
+
+  console.log("OTP Code: ", otpCode);
+
+  await Otp.findOneAndUpdate(
+    { userId: user._id },
+    { code: otpCode, expiresAt },
+    { upsert: true, new: true }
+  );
+
+    // Send Password Reset Email
+  sendEmail(user.email, '[LENDBLOCK] Password Reset Request', passwordResetRequestEmail(otpCode, 10));
+
+  return c.json({ message: 'Password reset requested. Check your email/phone for OTP.' });
+};
 
 export const setPassword = async (c: Context) => {
   const { email, phone, otp, password } = c.req.valid('json' as never) as z.infer<
