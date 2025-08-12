@@ -245,7 +245,7 @@ export const confirmKYCStatus = async (c: Context) => {
   // Check if they haven't verified kyc
   if (user.isKycVerified) {
     return c.json({ error: 'User is already verified. Please login.' }, 400);
-  } 
+  }
 
   // Go ahead and update user record to isKYCVerified to true
   await User.findByIdAndUpdate(user._id, { isKycVerified: true });
@@ -304,7 +304,9 @@ export const loginUser = async (c: Context) => {
   // Check if User's Email, Phone & Identity have been verified
   if (!user.isEmailVerified || !user.isPhoneNumberVerified) {
     return c.json({
-      error: 'User is not verified', verificationStatus: {
+      userId:user._id,
+      error: 'User is not verified',
+      verificationStatus: {
         email: user.isEmailVerified ? "verified" : "not verified",
         phone: user.isPhoneNumberVerified ? "verified" : "not verified"
       }
