@@ -1,14 +1,17 @@
 import axios, { AxiosError } from 'axios';
 
-const SHUFTI_PRO_TOKEN = process.env.SHUFTI_PRO_TOKEN;
-const SHUFTI_BASE_URL = 'https://api.shuftipro.com'
+const SHUFTI_PRO_CLIENT_ID = process.env.SHUFTI_PRO_CLIENT_ID;
+const SHUFTI_PRO_CLIENT_SECRET = process.env.SHUFTI_PRO_CLIENT_SECRET;
+
+const SHUFTI_BASE_URL = 'https://api.shuftipro.com';
+
+const AUTH_TOKEN = Buffer.from(`${SHUFTI_PRO_CLIENT_ID}:${SHUFTI_PRO_CLIENT_SECRET}`).toString('base64');
 
 export const verifyUser = async (kycReferenceId: string) => {
-    console.log(SHUFTI_PRO_TOKEN)
     let payload = {
         reference: kycReferenceId,
         callback_url: `${process.env.PORT_FORWARD_URL}/api/v1/webhooks/shufti/callback`,
-        redirect_url: `${process.env.PORT_FORWARD_URL}/api/v1/webhooks/shufti/redirect}`,
+        redirect_url: `${process.env.PORT_FORWARD_URL}/api/v1/webhooks/shufti/redirect`,
         country: "GB",
         language: "EN",
         verification_mode: "any", // Can be 'any' or 'all'
@@ -51,14 +54,14 @@ export const verifyUser = async (kycReferenceId: string) => {
     try {
         const response = await axios.post(SHUFTI_BASE_URL, payload, {
             headers: {
-                'Authorization': `Basic ${SHUFTI_PRO_TOKEN}`,
+                'Authorization': `Basic ${AUTH_TOKEN}`,
                 'Content-Type': 'application/json'
             },
         });
 
         return response.data;
     } catch (error: any) {
-        console.error('Error verifying user:', error.message);
+        console.error('Error verifying user:', error.response.data);
         throw error;
     }
 }
