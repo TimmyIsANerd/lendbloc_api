@@ -10,18 +10,16 @@ export const registerUserSchema = z.object({
 });
 
 export const verifyEmailSchema = z.object({
-  email: z.email(),
+  userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
   otp: z.string().length(6),
 });
 
 export const requestPhoneOtpSchema = z.object({
   userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
-  phone: z.string(),
 });
 
 export const verifyPhoneSchema = z.object({
   userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
-  phone: z.string(),
   otp: z.string().length(6),
 });
 
