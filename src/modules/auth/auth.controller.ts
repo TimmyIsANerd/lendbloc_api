@@ -100,11 +100,11 @@ export const registerUser = async (c: Context) => {
 };
 
 export const verifyEmail = async (c: Context) => {
-  const { email, otp } = c.req.valid('json' as never) as z.infer<
+  const { userId, otp } = c.req.valid('json' as never) as z.infer<
     typeof verifyEmailSchema
   >;
 
-  const user = await User.findOne({ email });
+  const user = await User.findOne({ _id: userId });
 
   if (!user) {
     return c.json({ error: 'User not found' }, 404);
@@ -120,7 +120,9 @@ export const verifyEmail = async (c: Context) => {
   });
 
   if (!storedOtp || storedOtp.code !== otp || storedOtp.expiresAt < new Date()) {
-    await Otp.deleteOne({ _id: storedOtp?._id });
+    if (storedOtp && storedOtp.expiresAt < new Date()) {
+      await Otp.deleteOne({ _id: storedOtp?._id });
+    }
     return c.json({ error: 'Invalid or expired OTP' }, 400);
   }
 
@@ -132,14 +134,9 @@ export const verifyEmail = async (c: Context) => {
 }
 
 export const sendPhone = async (c: Context) => {
-  const { phone, userId } = c.req.valid('json' as never) as z.infer<
+  const { userId } = c.req.valid('json' as never) as z.infer<
     typeof requestPhoneOtpSchema
   >;
-
-  const phoneRegex = /^\+[1-9]\d{1,14}$/;
-  if (!phoneRegex.test(phone)) {
-    return c.json({ error: 'Phone number must be a valid E.164 formatted number' }, 400);
-  }
 
   const user = await User.findById(userId);
 
@@ -177,24 +174,14 @@ export const sendPhone = async (c: Context) => {
 }
 
 export const verifyPhone = async (c: Context) => {
-  const { userId, otp, phone } = c.req.valid('json' as never) as z.infer<
+  const { userId, otp } = c.req.valid('json' as never) as z.infer<
     typeof verifyPhoneSchema
   >;
-
-  const phoneRegex = /^\+\d{1,15}$/;
-
-  if (!phoneRegex.test(phone)) {
-    return c.json({ error: 'Phone number must be a valid E.164 formatted number' }, 400);
-  }
 
   const user = await User.findById(userId);
 
   if (!user) {
     return c.json({ error: 'User not found' }, 404);
-  }
-
-  if (user.phoneNumber !== phone) {
-    return c.json({ error: 'Phone number does not match' }, 400);
   }
 
   const storedOtp = await Otp.findOne({
@@ -231,13 +218,13 @@ export const initializeKYC = async (c: Context) => {
   }
 
   // If Kyc not verified, use shufti's response to provide verification page
-  // try {
-  //   const verificationData = await verifyUser(user.kycReferenceId);
-  //   return c.json({ verificationUrl: verificationData.verification_url });
-  // } catch (error: any) {
-  //   console.error('Error initializing KYC:', error.message);
-  //   return c.json({ error: 'Failed to initialize KYC verification.' }, 500);
-  // }
+  try {
+    const verificationData = await verifyUser(user.kycReferenceId);
+    return c.json({ verificationData });
+  } catch (error: any) {
+    console.error('Error initializing KYC:', error.message);
+    return c.json({ error: 'Failed to initialize KYC verification.' }, 500);
+  }
 
 
   return c.json({ message: "KYC Initialized" }, 200)
@@ -258,7 +245,7 @@ export const confirmKYCStatus = async (c: Context) => {
   // Check if they haven't verified kyc
   if (user.isKycVerified) {
     return c.json({ error: 'User is already verified. Please login.' }, 400);
-  }
+  } 
 
   // Go ahead and update user record to isKYCVerified to true
   await User.findByIdAndUpdate(user._id, { isKycVerified: true });
