@@ -107,6 +107,7 @@ This section will be updated after each task to track the progress of the projec
 - [x] OTP Generation
 - [x] JSDoc for Twilio `sendOtp` function
 - [x] Shufti Pro Integration (`src/helpers/shufti/index.ts`)
+- [x] Corrected Shufti Pro API authentication
 
 ### Email Templates
 - [x] Improved UI and UX-centered copy for all email templates
