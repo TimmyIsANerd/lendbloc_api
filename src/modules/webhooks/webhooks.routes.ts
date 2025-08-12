@@ -8,4 +8,7 @@ webhooks.post("/shufti/callback", shuftiCallback);
 
 webhooks.get("/shufti/redirect", shuftiRedirect);
 
+
+
+
 export default webhooks;
