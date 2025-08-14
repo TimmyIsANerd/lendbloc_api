@@ -8,11 +8,12 @@ export interface IUser extends Document {
   phoneNumber: string;
   passwordHash: string;
   kycReferenceId: string;
-  referralId:string;
+  referralId: string;
   isKycVerified: boolean;
   isEmailVerified: boolean;
   isPhoneNumberVerified: boolean;
   allowPasswordReset: boolean;
+  allowEmailChange: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
