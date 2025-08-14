@@ -11,6 +11,7 @@ export interface IUser extends Document {
   isKycVerified: boolean;
   isEmailVerified: boolean;
   isPhoneNumberVerified: boolean;
+  allowPasswordReset: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,7 +27,8 @@ const UserSchema: Schema = new Schema(
     kycReferenceId: { type: String, unique: true, required: true },
     isKycVerified: { type: Boolean, default: false },
     isEmailVerified: { type: Boolean, default: false },
-    isPhoneNumberVerified: { type: Boolean, default: false }
+    isPhoneNumberVerified: { type: Boolean, default: false },
+    allowPasswordReset: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
