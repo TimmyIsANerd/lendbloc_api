@@ -109,6 +109,9 @@ This section will be updated after each task to track the progress of the projec
 - [x] Send a test email to a user (`/referrals/test-email`)
 - [x] Unit tests for the referral module
 
+### `calculator` module
+- [x] Calculate profit from referrals (`/calculator`)
+
 ### `helpers`
 - [x] OTP Generation
 - [x] JSDoc for Twilio `sendOtp` function

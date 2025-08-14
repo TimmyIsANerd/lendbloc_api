@@ -12,6 +12,7 @@ import notifications from './src/modules/notifications/notifications.routes';
 import admin from './src/modules/admin/admin.routes';
 import webhooks from './src/modules/webhooks/webhooks.routes';
 import referrals from './src/modules/referrals/referral.routes';
+import calculator from './src/modules/calculator/calculator.routes';
 import connectDB from './src/config/db';
 
 connectDB();
@@ -47,6 +48,7 @@ app.route('/api/v1/notifications', notifications);
 app.route('/api/v1/admin', admin);
 app.route('/api/v1/webhooks', webhooks);
 app.route('/api/v1/referrals', referrals);
+app.route('/api/v1/calculator', calculator);
 
 const now = new Date();
 const formattedDate = now.toLocaleString('en-US', {
