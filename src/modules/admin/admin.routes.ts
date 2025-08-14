@@ -1,35 +1,19 @@
 import { Hono } from 'hono';
-import { zValidator } from '@hono/zod-validator';
 import {
-  adminLogin,
-  createAdmin,
-  getAllUsers,
-  getUserById,
-  updateUserById,
-  deleteUserById,
-  getAllLoans,
-  getAllSavingsAccounts,
+  getUsers,
+  getLoans,
+  getSavings,
+  getTransactions,
 } from './admin.controller';
-import {
-  createAdminSchema,
-  loginAdminSchema,
-  updateAdminSchema,
-} from './admin.validation';
-import { adminAuthMiddleware } from '../../middleware/adminAuth';
+import { adminAuth } from '../../middleware/adminAuth';
 
 const admin = new Hono();
 
-// Public routes
-admin.post('/login', zValidator('json', loginAdminSchema), adminLogin);
+admin.use('/*', adminAuth);
 
-// Protected routes
-admin.use('/*', adminAuthMiddleware);
-admin.post('/admins', zValidator('json', createAdminSchema), createAdmin);
-admin.get('/users', getAllUsers);
-admin.get('/users/:id', getUserById);
-admin.put('/users/:id', zValidator('json', updateAdminSchema), updateUserById);
-admin.delete('/users/:id', deleteUserById);
-admin.get('/loans', getAllLoans);
-admin.get('/savings', getAllSavingsAccounts);
+admin.get('/users', getUsers);
+admin.get('/loans', getLoans);
+admin.get('/savings', getSavings);
+admin.get('/transactions', getTransactions);
 
 export default admin;
