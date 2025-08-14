@@ -82,6 +82,7 @@ This section will be updated after each task to track the progress of the projec
 
 ### `users` module
 - [x] User Profile Management (`/users/profile`)
+- [x] User Email Change
 - [x] KYC Verification (Address, ID, Facial Recognition) and Callback Handling
 
 ### `wallets` module
@@ -129,7 +130,7 @@ This section will be updated after each task to track the progress of the projec
 This project will be developed with the following best practices in mind:
 
 *   **Code Quality:** The codebase will be type-safe, modular, and adhere to the Don't Repeat Yourself (DRY) principle to ensure maintainability and reduce redundancy.
-*   **Git Workflow:** After each file is modified, it should be committed with a clear and descriptive message. The agent will read the file and provide a commit message for the user to approve.
+*   **Git Workflow:** After implementing a feature or completing any task, the agent must use `git status` to check for uncommitted files. Then for each uncommitted file, the agent must learn the changes/update using `git diff`, then commit each file with an appropriate git message for the user to approve.
 
 The backend will be structured as a set of modular routes using Hono. This approach promotes modularity and allows for independent development and scaling of each feature.
 
