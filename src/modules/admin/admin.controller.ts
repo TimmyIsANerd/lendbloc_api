@@ -1,4 +1,4 @@
-import { Context } from 'hono';
+import { type Context } from 'hono';
 import User from '../../models/User';
 import Loan from '../../models/Loan';
 import SavingsAccount from '../../models/SavingsAccount';

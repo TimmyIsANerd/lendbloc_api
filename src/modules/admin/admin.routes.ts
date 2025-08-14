@@ -5,11 +5,11 @@ import {
   getSavings,
   getTransactions,
 } from './admin.controller';
-import { adminAuth } from '../../middleware/adminAuth';
+import { adminAuthMiddleware } from '../../middleware/adminAuth';
 
 const admin = new Hono();
 
-admin.use('/*', adminAuth);
+admin.use('/*', adminAuthMiddleware);
 
 admin.get('/users', getUsers);
 admin.get('/loans', getLoans);
