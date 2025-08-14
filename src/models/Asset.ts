@@ -7,6 +7,7 @@ export interface IAsset extends Document {
   currentPrice: number;
   marketCap: number;
   circulatingSupply: number;
+  amountHeld: number;
   isLendable: boolean;
   isCollateral: boolean;
   createdAt: Date;
@@ -21,6 +22,7 @@ const AssetSchema: Schema = new Schema(
     currentPrice: { type: Number, required: true },
     marketCap: { type: Number, required: true },
     circulatingSupply: { type: Number, required: true },
+    amountHeld: { type: Number, required: true },
     isLendable: { type: Boolean, default: true },
     isCollateral: { type: Boolean, default: true },
   },
