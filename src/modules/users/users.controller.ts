@@ -69,7 +69,9 @@ export const requestPasswordChange = async (c: Context) => {
     }
 
     const otp = generateOtp();
-    await Otp.create({ userId: user._id, otp });
+    await Otp.create({ userId: user._id, code: otp, expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
+    
+    console.log("OTP: ", otp);
 
     await sendEmail(user.email, 'Password Reset', passwordResetRequestEmail(otp, 10));
 
@@ -154,7 +156,9 @@ export const requestEmailChange = async (c: Context) => {
         }
 
         const otp = generateOtp();
-        await Otp.create({ userId: user._id, otp });
+        await Otp.create({ userId: user._id, code: otp, expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
+        
+        console.log("OTP: ", otp);
 
         await sendEmail(newEmail, 'Email Change Verification', otpVerificationEmail(otp, 10));
 
