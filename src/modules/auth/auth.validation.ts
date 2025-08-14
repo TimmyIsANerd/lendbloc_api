@@ -46,12 +46,22 @@ export const verifyOtpSchema = z.object({
 });
 
 export const requestPasswordResetSchema = z.object({
-  email: z.email()
+  email: z.email().optional(),
+  phone: z.string().optional(),
 });
 
-export const setPasswordSchema = z.object({
-  email: z.email(),
+export const editPhoneNumberSchema = z.object({
+  userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
+  phone: z.string().regex(/^\+[1-9]\d{1,14}$/, 'Phone number must be in E.164 format'),
+})
+
+export const validatePasswordResetOTPSchema = z.object({
+  userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
   otp: z.string().length(5),
+})
+
+export const setPasswordSchema = z.object({
+  userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
   password: z.string().min(8),
 });
 
