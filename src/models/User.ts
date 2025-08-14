@@ -32,6 +32,7 @@ const UserSchema: Schema = new Schema(
     isEmailVerified: { type: Boolean, default: false },
     isPhoneNumberVerified: { type: Boolean, default: false },
     allowPasswordReset: { type: Boolean, default: false },
+    allowEmailChange: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
