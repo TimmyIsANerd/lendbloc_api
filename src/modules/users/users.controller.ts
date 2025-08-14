@@ -69,7 +69,11 @@ export const requestPasswordChange = async (c: Context) => {
     }
 
     const otp = generateOtp();
-    await Otp.create({ userId: user._id, code: otp, expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
+    await Otp.findOneAndUpdate(
+      { userId: user._id },
+      { code: otp, expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
+      { upsert: true, new: true }
+    );
     
     console.log("OTP: ", otp);
 
@@ -156,7 +160,11 @@ export const requestEmailChange = async (c: Context) => {
         }
 
         const otp = generateOtp();
-        await Otp.create({ userId: user._id, code: otp, expiresAt: new Date(Date.now() + 10 * 60 * 1000) });
+        await Otp.findOneAndUpdate(
+          { userId: user._id },
+          { code: otp, expiresAt: new Date(Date.now() + 10 * 60 * 1000) },
+          { upsert: true, new: true }
+        );
         
         console.log("OTP: ", otp);
 
