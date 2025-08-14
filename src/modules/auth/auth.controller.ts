@@ -28,7 +28,9 @@ import {
   initializeKYCSchema,
   confirmKYCStatusSchema,
   refreshTokenSchema,
-  logoutSchema
+  logoutSchema,
+  validatePasswordResetOTPSchema,
+  editPhoneNumberSchema
 } from './auth.validation';
 
 export const registerUser = async (c: Context) => {
@@ -200,6 +202,29 @@ export const verifyPhone = async (c: Context) => {
   return c.json({ message: 'Phone number verified successfully' });
 }
 
+
+export const editPhoneNumber = async (c: Context) => {
+  const { userId, phone } = c.req.valid('json' as never) as z.infer<
+    typeof editPhoneNumberSchema
+  >;
+
+  const user = await User.findOne({
+    _id: userId,
+  });
+
+  if (!user) {
+    return c.json({ error: 'User not found' }, 404);
+  }
+
+  if (user.isPhoneNumberVerified) {
+    return c.json({ error: 'Phone number is already verified' }, 400);
+  }
+
+  await User.findByIdAndUpdate(user._id, { phoneNumber: phone });
+
+  return c.json({ message: 'Phone number updated successfully' });
+};
+
 export const initializeKYC = async (c: Context) => {
   const { userId } = c.req.valid('json' as never) as z.infer<
     typeof initializeKYCSchema
@@ -304,7 +329,7 @@ export const loginUser = async (c: Context) => {
   // Check if User's Email, Phone & Identity have been verified
   if (!user.isEmailVerified || !user.isPhoneNumberVerified) {
     return c.json({
-      userId:user._id,
+      userId: user._id,
       error: 'User is not verified',
       verificationStatus: {
         email: user.isEmailVerified ? "verified" : "not verified",
@@ -361,7 +386,7 @@ export const verifyLogin = async (c: Context) => {
 
   const user = await User.findOne({
     $or: [
-      { email: email },
+      { email },
       { phoneNumber: phone },
     ],
   });
@@ -410,17 +435,22 @@ export const verifyLogin = async (c: Context) => {
 };
 
 export const requestPasswordReset = async (c: Context) => {
-  const { email } = c.req.valid('json' as never) as z.infer<
+  const { email, phone } = c.req.valid('json' as never) as z.infer<
     typeof requestPasswordResetSchema
   >;
 
-  if (!email) {
-    return c.json({ error: 'Email is required' }, 400);
+  if (!email && !phone) {
+    return c.json({ error: 'Email or phone number is required' }, 400);
+  }
+
+  if (email && phone) {
+    return c.json({ error: 'Only one of email or phone number should be provided' }, 400);
   }
 
   const user = await User.findOne({
     $or: [
-      { email: email },
+      { email },
+      { phoneNumber: phone },
     ],
   });
 
@@ -439,26 +469,25 @@ export const requestPasswordReset = async (c: Context) => {
     { upsert: true, new: true }
   );
 
-  // Send Password Reset Email
-  sendEmail(user.email, '[LENDBLOCK] Password Reset Request', passwordResetRequestEmail(otpCode, 10));
-
-  return c.json({ message: 'Password reset requested. Check your email/phone for OTP.' });
-};
-
-export const setPassword = async (c: Context) => {
-  const { email, otp, password } = c.req.valid('json' as never) as z.infer<
-    typeof setPasswordSchema
-  >;
-
-  if (!email) {
-    return c.json({ error: 'Email is required' }, 400);
+  if (email) {
+    // Send Password Reset Email
+    sendEmail(user.email, '[LENDBLOCK] Password Reset Request', passwordResetRequestEmail(otpCode, 10));
+  } else {
+    // Send Password Reset SMS
+    await sendSms(user.phoneNumber, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
   }
 
+  return c.json({ message: 'Password reset requested. Check your email/phone for OTP.', userId: user._id });
+};
+
+export const validatePasswordResetOTP = async (c: Context) => {
+  const { userId, otp } = c.req.valid('json' as never) as z.infer<
+    typeof validatePasswordResetOTPSchema
+  >;
+
   const user = await User.findOne({
-    $or: [
-      { email: email },
-    ],
-  }).select('passwordHash');
+    _id: userId,
+  });
 
   if (!user) {
     return c.json({ error: 'User not found' }, 404);
@@ -476,6 +505,31 @@ export const setPassword = async (c: Context) => {
     return c.json({ error: 'Invalid or expired OTP' }, 400);
   }
 
+  await Otp.deleteOne({ _id: storedOtp._id });
+
+  // Set allowPasswordReset to false
+  await User.findByIdAndUpdate(user._id, { allowPasswordReset: true });
+
+  return c.json({ message: 'Password reset OTP validated successfully', userId: user._id });
+};
+
+export const setPassword = async (c: Context) => {
+  const { userId, password } = c.req.valid('json' as never) as z.infer<
+    typeof setPasswordSchema
+  >;
+
+  const user = await User.findOne({
+    _id: userId,
+  }).select('passwordHash allowPasswordReset');
+
+  if (!user) {
+    return c.json({ error: 'User not found' }, 404);
+  }
+
+  if (!user.allowPasswordReset) {
+    return c.json({ error: 'Password reset not allowed' }, 400);
+  }
+
   const passwordMatch = await bcrypt.compare(password, user.passwordHash);
 
   if (passwordMatch) {
@@ -486,7 +540,8 @@ export const setPassword = async (c: Context) => {
 
   await User.findByIdAndUpdate(user._id, { passwordHash });
 
-  await Otp.deleteOne({ _id: storedOtp._id });
+  // Set allowPasswordReset to false
+  await User.findByIdAndUpdate(user._id, { allowPasswordReset: false });
 
   return c.json({ message: 'Password set successfully' });
 };
