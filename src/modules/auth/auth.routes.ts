@@ -16,6 +16,8 @@ import {
   setPasswordSchema,
   refreshTokenSchema,
   logoutSchema,
+  editPhoneNumberSchema,
+  validatePasswordResetOTPSchema,
 } from './auth.validation';
 import {
   registerUser,
@@ -30,31 +32,35 @@ import {
   setPassword,
   refreshToken,
   logout,
+  editPhoneNumber,
+  validatePasswordResetOTP
 } from './auth.controller';
 
 const auth = new Hono();
 
 const phoneLimiter = rateLimiter({
-  windowMs: 5 * 60 * 1000, // 5 minutes
+  windowMs: 2 * 60 * 1000, // 2 minutes
   limit: 1,
   standardHeaders: 'draft-6',
   keyGenerator: (c) => {
-    const { phone } = c.req.valid('json' as never) as z.infer<
+    const { userId } = c.req.valid('json' as never) as z.infer<
       typeof requestPhoneOtpSchema
     >;
-    return phone
+    return userId
   },
 });
 
 const passwordRequestLimiter = rateLimiter({
-  windowMs: 5 * 60 * 1000, // 5 minutes
+  windowMs: 2 * 60 * 1000, // 2 minutes
   limit: 1,
   standardHeaders: 'draft-6',
   keyGenerator: (c) => {
-    const { email } = c.req.valid('json' as never) as z.infer<
+    const { email, phone } = c.req.valid('json' as never) as z.infer<
       typeof requestPasswordResetSchema
     >;
-    return email
+
+    // Use the provided email or phone as the rate limit key
+    return email || phone || 'invalid-request';
   },
 });
 
@@ -73,6 +79,16 @@ auth.post(
   passwordRequestLimiter,
   requestPasswordReset
 );
+auth.post(
+  '/validate-password-reset-otp',
+  zValidator('json', validatePasswordResetOTPSchema),
+  validatePasswordResetOTP
+);
+auth.post(
+  '/edit-phone',
+  zValidator('json', editPhoneNumberSchema),
+  editPhoneNumber
+)
 auth.post('/set-password', zValidator('json', setPasswordSchema), setPassword);
 auth.post('/refresh-token', zValidator('json', refreshTokenSchema), refreshToken);
 auth.post('/logout', authMiddleware, zValidator('json', logoutSchema), logout);
