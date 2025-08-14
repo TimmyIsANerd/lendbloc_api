@@ -102,6 +102,7 @@ This section will be updated after each task to track the progress of the projec
 
 ### `notifications` module
 - [x] Send Notifications (`/notifications`)
+- [x] Email and SMS templates for notifications
 
 ### `referrals` module
 - [x] Get a user's referrals (`/referrals`)

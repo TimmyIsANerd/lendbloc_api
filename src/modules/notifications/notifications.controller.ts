@@ -5,6 +5,7 @@ import User from '../../models/User';
 import { sendNotificationSchema } from './notifications.validation';
 import { sendEmail } from '../../helpers/email';
 import { sendSms } from '../../helpers/twilio';
+import { emailNotificationTemplate, smsNotificationTemplate } from '../../templates/notification';
 
 export const sendNotification = async (c: Context) => {
   const { userId, type, message } = c.req.valid('json' as never) as z.infer<
@@ -25,10 +26,10 @@ export const sendNotification = async (c: Context) => {
     });
 
     if (type === 'email') {
-      await sendEmail(user.email, 'LendBloc Notification', message);
+      await sendEmail(user.email, 'LendBloc Notification', emailNotificationTemplate({ fullName: user.fullName, message }));
     } else if (type === 'sms') {
       if (user.phoneNumber) {
-        await sendSms(user.phoneNumber, message);
+        await sendSms(user.phoneNumber, smsNotificationTemplate({ message }));
       } else {
         return c.json({ error: 'User does not have a phone number' }, 400);
       }
