@@ -103,6 +103,12 @@ This section will be updated after each task to track the progress of the projec
 ### `notifications` module
 - [x] Send Notifications (`/notifications`)
 
+### `referrals` module
+- [x] Get a user's referrals (`/referrals`)
+- [x] Get a user's referral earnings (`/referrals/earnings`)
+- [x] Send a test email to a user (`/referrals/test-email`)
+- [x] Unit tests for the referral module
+
 ### `helpers`
 - [x] OTP Generation
 - [x] JSDoc for Twilio `sendOtp` function
@@ -131,6 +137,7 @@ The backend will be structured as a set of modular routes using Hono. This appro
 - [x] Admin Panel API (`/admin`)
 
 *   **`admin` module:** Provides the API for the admin panel to manage the platform.
+*   **`referrals` module:** Manages the referral program, including tracking referred users and calculating earnings.
 
 ## Git Repository Root
 
@@ -143,3 +150,49 @@ The Git repository for this project is located at: `/home/timmy/Desktop/Web3Proj
 *   **Implementation:** Implement the features as described in the documentation to the best of your ability, following all established guidelines and best practices. Be proactive and thorough in your work.
 *   **Testing:** Write unit tests for each feature to ensure correctness and facilitate future development. Do not run the tests; I will handle that.
 *   **Progress Tracking:** After completing a feature or a significant task, update the "Project Status & Feature Checklist" section in this `GEMINI.md` file to reflect the changes.
+
+## Referral Program
+
+The referral program allows users to earn rewards by referring new users to the platform. The following endpoints are available for managing referrals and earnings:
+
+### Get Referrals
+
+*   **Endpoint:** `GET /api/v1/referrals`
+*   **Authentication:** Bearer Token
+*   **Description:** Retrieves a list of users referred by the authenticated user.
+*   **Response:**
+
+```json
+{
+    "_id": "60f1b3b3b3b3b3b3b3b3b3b3",
+    "user": "60f1b3b3b3b3b3b3b3b3b3b4",
+    "referredUsers": [
+        {
+            "_id": "60f1b3b3b3b3b3b3b3b3b3b5",
+            "fullName": "John Doe"
+        }
+    ],
+    "createdAt": "2021-07-16T12:00:00.000Z",
+    "updatedAt": "2021-07-16T12:00:00.000Z"
+}
+```
+
+### Get Referral Earnings
+
+*   **Endpoint:** `GET /api/v1/referrals/earnings`
+*   **Authentication:** Bearer Token
+*   **Description:** Retrieves a list of earnings from referred users.
+*   **Response:**
+
+```json
+[
+    {
+        "_id": "60f1b3b3b3b3b3b3b3b3b3b6",
+        "referral": "60f1b3b3b3b3b3b3b3b3b3b3",
+        "referredUser": "60f1b3b3b3b3b3b3b3b3b3b5",
+        "amount": 10,
+        "createdAt": "2021-07-16T12:00:00.000Z",
+        "updatedAt": "2021-07-16T12:00:00.000Z"
+    }
+]
+```

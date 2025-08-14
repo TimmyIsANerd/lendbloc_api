@@ -11,6 +11,7 @@ import exchange from './src/modules/exchange/exchange.routes';
 import notifications from './src/modules/notifications/notifications.routes';
 import admin from './src/modules/admin/admin.routes';
 import webhooks from './src/modules/webhooks/webhooks.routes';
+import referrals from './src/modules/referrals/referral.routes';
 import connectDB from './src/config/db';
 
 connectDB();
@@ -45,6 +46,7 @@ app.route('/api/v1/exchange', exchange);
 app.route('/api/v1/notifications', notifications);
 app.route('/api/v1/admin', admin);
 app.route('/api/v1/webhooks', webhooks);
+app.route('/api/v1/referrals', referrals);
 
 const now = new Date();
 const formattedDate = now.toLocaleString('en-US', {

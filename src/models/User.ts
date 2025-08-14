@@ -8,6 +8,7 @@ export interface IUser extends Document {
   phoneNumber: string;
   passwordHash: string;
   kycReferenceId: string;
+  referralId:string;
   isKycVerified: boolean;
   isEmailVerified: boolean;
   isPhoneNumberVerified: boolean;
@@ -25,6 +26,7 @@ const UserSchema: Schema = new Schema(
     phoneNumber: { type: String, required: true, unique: true },
     passwordHash: { type: String, required: true },
     kycReferenceId: { type: String, unique: true, required: true },
+    referralId: { type: String, unique: true, required: true },
     isKycVerified: { type: Boolean, default: false },
     isEmailVerified: { type: Boolean, default: false },
     isPhoneNumberVerified: { type: Boolean, default: false },
