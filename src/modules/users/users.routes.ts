@@ -27,7 +27,7 @@ users.use('/*', authMiddleware);
 users.get('/profile', getUserProfile);
 users.put('/profile', zValidator('json', updateUserProfileSchema), updateUserProfile);
 
-users.get("/request-password-change", zValidator('json', requestPasswordChangeSchema), requestPasswordChange);
+users.post("/request-password-change", zValidator('json', requestPasswordChangeSchema), requestPasswordChange);
 users.post("/validate-password-change-otp", zValidator('json', validatePasswordChangeOTPSchema), validatePasswordChangeOTP);
 users.post("/update-password-change", zValidator('json', updatePasswordChangeSchema), updatePasswordChange);
 
