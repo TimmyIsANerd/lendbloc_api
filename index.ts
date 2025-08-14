@@ -14,6 +14,7 @@ import webhooks from './src/modules/webhooks/webhooks.routes';
 import referrals from './src/modules/referrals/referral.routes';
 import calculator from './src/modules/calculator/calculator.routes';
 import prices from './src/modules/prices/prices.routes';
+import dashboard from './src/modules/dashboard/dashboard.routes';
 import connectDB from './src/config/db';
 
 connectDB();
@@ -51,6 +52,7 @@ app.route('/api/v1/webhooks', webhooks);
 app.route('/api/v1/referrals', referrals);
 app.route('/api/v1/calculator', calculator);
 app.route('/api/v1/prices', prices);
+app.route('/api/v1/dashboard', dashboard);
 
 const now = new Date();
 const formattedDate = now.toLocaleString('en-US', {
