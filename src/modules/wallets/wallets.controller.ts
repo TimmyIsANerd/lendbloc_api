@@ -6,7 +6,7 @@ export const getUserWallets = async (c: Context) => {
   const userId = c.get('jwtPayload').userId;
 
   try {
-    const wallets = await Wallet.find({ userId }).populate('assetId');
+    const wallets = await Wallet.find({ userId }).select('-encryptedMnemonic').populate('assetId');
     return c.json(wallets);
   } catch (error) {
     console.error('Error fetching user wallets:', error);
@@ -19,7 +19,7 @@ export const getWalletDetails = async (c: Context) => {
   const walletId = c.req.param('id');
 
   try {
-    const wallet = await Wallet.findOne({ _id: walletId, userId }).populate('assetId');
+    const wallet = await Wallet.findOne({ _id: walletId, userId }).select('-encryptedMnemonic').populate('assetId');
 
     if (!wallet) {
       return c.json({ error: 'Wallet not found' }, 404);
@@ -52,11 +52,13 @@ export const createWallet = async (c: Context) => {
     const wallet = await Wallet.create({
       userId,
       assetId: asset._id,
-      address: `${assetSymbol.toLowerCase()}_address_${userId}`, // Placeholder for a generated address
+      address: `${assetSymbol.toLowerCase()}_address_${userId}`,
       balance: 0,
     });
 
-    return c.json({ message: 'Wallet created successfully', wallet });
+    const { encryptedMnemonic, ...walletResponse } = wallet.toObject();
+
+    return c.json({ message: 'Wallet created successfully', wallet: walletResponse });
   } catch (error) {
     console.error('Error creating wallet:', error);
     return c.json({ error: 'An unexpected error occurred' }, 500);
