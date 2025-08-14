@@ -7,7 +7,7 @@ export const registerUserSchema = z.object({
   email: z.email(),
   phone: z.string().optional(),
   password: z.string().min(8),
-  referralId: z.string().optional(),
+  referrer: z.string().optional(),
 });
 
 export const verifyEmailSchema = z.object({

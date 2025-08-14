@@ -4,6 +4,7 @@ import User, { type IUser } from '../../models/User';
 import Otp from '../../models/Otp';
 import RefreshToken from '../../models/RefreshToken';
 import Wallet from '../../models/Wallet';
+import Referral from '../../models/Referral';
 import bcrypt from 'bcrypt';
 import { sign, verify } from 'hono/jwt';
 import { setCookie, deleteCookie } from 'hono/cookie';
@@ -34,7 +35,7 @@ import {
 } from './auth.validation';
 
 export const registerUser = async (c: Context) => {
-  const { title, fullName, dateOfBirth, email, phone, password } = c.req.valid('json' as never) as z.infer<
+  const { title, fullName, dateOfBirth, email, phone, password, referrer } = c.req.valid('json' as never) as z.infer<
     typeof registerUserSchema
   >;
 
@@ -67,7 +68,31 @@ export const registerUser = async (c: Context) => {
       isKycVerified: false,
       isEmailVerified: false,
       isPhoneNumberVerified: false,
+      referralId: nanoid(6)
     });
+
+    // Find Referrer and update referral record
+    if (referrer) {
+      const referrerUser = await User.findOne({ referralId: referrer });
+      if (referrerUser) {
+        // Try to find existing referral for the referrer
+        const existingReferral = await Referral.findOne({ user: referrerUser._id });
+        
+        if (existingReferral) {
+          // Update existing referral by adding the new user to referredUsers
+          await Referral.findByIdAndUpdate(
+            existingReferral._id,
+            { $addToSet: { referredUsers: user._id } } // $addToSet prevents duplicates
+          );
+        } else {
+          // Create new referral if none exists
+          await Referral.create({
+            user: referrerUser._id,
+            referredUsers: [user._id],
+          });
+        }
+      }
+    }
 
     // Initialize Wallet Creation
     // Add a guard to check if wallets are already initialized for this user
