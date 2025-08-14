@@ -18,6 +18,11 @@ export const getWalletDetails = async (c: Context) => {
   const userId = c.get('jwtPayload').userId;
   const walletId = c.req.param('id');
 
+  // Validate ID, make sure string length matches needed input for mongoose
+  if (walletId.length !== 24) {
+    return c.json({ error: 'Invalid wallet ID' }, 400);
+  }
+
   try {
     const wallet = await Wallet.findOne({ _id: walletId, userId }).select('-encryptedMnemonic').populate('assetId');
 
@@ -31,6 +36,23 @@ export const getWalletDetails = async (c: Context) => {
     return c.json({ error: 'An unexpected error occurred' }, 500);
   }
 };
+
+export const getWalletByAddress = async (c: Context) => {
+  const walletAddress = c.req.param('walletAddress');
+
+  try {
+    const wallet = await Wallet.findOne({ address: walletAddress }).select('-encryptedMnemonic').populate('assetId');
+
+    if (!wallet) {
+      return c.json({ error: 'Wallet not found' }, 404);
+    }
+
+    return c.json(wallet);
+  } catch (error) {
+    console.error('Error fetching wallet by address:', error);
+    return c.json({ error: 'An unexpected error occurred' }, 500);
+  }
+}
 
 export const createWallet = async (c: Context) => {
   const userId = c.get('jwtPayload').userId;
