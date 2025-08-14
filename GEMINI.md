@@ -113,6 +113,9 @@ This section will be updated after each task to track the progress of the projec
 ### `calculator` module
 - [x] Calculate profit from referrals (`/calculator`)
 
+### `prices` module
+- [x] Get crypto prices (`/prices`)
+
 ### `helpers`
 - [x] OTP Generation
 - [x] JSDoc for Twilio `sendOtp` function

@@ -13,6 +13,7 @@ import admin from './src/modules/admin/admin.routes';
 import webhooks from './src/modules/webhooks/webhooks.routes';
 import referrals from './src/modules/referrals/referral.routes';
 import calculator from './src/modules/calculator/calculator.routes';
+import prices from './src/modules/prices/prices.routes';
 import connectDB from './src/config/db';
 
 connectDB();
@@ -49,6 +50,7 @@ app.route('/api/v1/admin', admin);
 app.route('/api/v1/webhooks', webhooks);
 app.route('/api/v1/referrals', referrals);
 app.route('/api/v1/calculator', calculator);
+app.route('/api/v1/prices', prices);
 
 const now = new Date();
 const formattedDate = now.toLocaleString('en-US', {
