@@ -1,6 +1,6 @@
 
 import mongoose, { Schema, Document } from 'mongoose';
-import { IUser } from './User';
+import { type IUser } from './User';
 
 export interface IReferral extends Document {
   user: IUser['_id'];
