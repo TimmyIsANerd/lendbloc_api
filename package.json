@@ -42,7 +42,8 @@
     "tiny-secp256k1": "^2.2.4",
     "tronweb": "^6.0.4",
     "twilio": "^5.8.0",
-    "viem": "^2.33.2"
+    "viem": "^2.33.2",
+    "zod": "^4.0.17"
   },
   "scripts": {
     "start": "bun run --watch index.ts",
