@@ -127,6 +127,9 @@ The backend will be structured as a set of modular routes using Hono. This appro
 *   **`savings` module:** Manages user savings accounts, interest accrual, and distributions.
 *   **`exchange` module:** Handles crypto-to-crypto swaps and coin voting.
 *   **`notifications` module:** Manages sending emails and SMS messages to users.
+### `admin` module
+- [x] Admin Panel API (`/admin`)
+
 *   **`admin` module:** Provides the API for the admin panel to manage the platform.
 
 ## Git Repository Root
