@@ -72,16 +72,25 @@ const passwordRequestLimiter = rateLimiter({
 
 
 auth.post('/register', zValidator('json', registerUserSchema), registerUser);
+
+// Email & Phone Verification
 auth.post("/verify/email", zValidator('json', verifyEmailSchema), verifyEmail);
 auth.post("/send/phone", zValidator('json', requestPhoneOtpSchema), phoneLimiter, sendPhone);
 auth.post("/verify/phone", zValidator('json', verifyPhoneSchema), verifyPhone);
+auth.post('/edit-phone', zValidator('json', editPhoneNumberSchema), editPhoneNumber)
+
+// KYC
 auth.post('/kyc/document', zValidator('form', kycDocumentSchema), kycDocument);
 auth.post('/kyc/face', zValidator('form', kycFaceSchema), kycFace);
 auth.post('/kyc/address', zValidator('form', kycAddressSchema), kycAddress);
 auth.post('/kyc/consent', zValidator('form', kycConsentSchema), kycConsent);
 auth.post('/kyc/background-checks', zValidator('json', kycBackgroundChecksSchema), kycBackgroundChecks);
+
+// Login
 auth.post('/login', zValidator('json', loginUserSchema), loginUser);
 auth.post('/verify-login', zValidator('json', verifyOtpSchema), verifyLogin);
+
+// Password Reset
 auth.post(
   '/request-password-reset',
   zValidator('json', requestPasswordResetSchema),
@@ -93,13 +102,12 @@ auth.post(
   zValidator('json', validatePasswordResetOTPSchema),
   validatePasswordResetOTP
 );
-auth.post(
-  '/edit-phone',
-  zValidator('json', editPhoneNumberSchema),
-  editPhoneNumber
-)
 auth.post('/set-password', zValidator('json', setPasswordSchema), setPassword);
+
+// Token Management
 auth.post('/refresh-token', zValidator('json', refreshTokenSchema), refreshToken);
+
+// Logout
 auth.post('/logout', authMiddleware, zValidator('json', logoutSchema), logout);
 
 export default auth;
