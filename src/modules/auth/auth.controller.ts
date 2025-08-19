@@ -262,9 +262,18 @@ export const initializeKYC = async (c: Context) => {
     return c.json({ error: 'User is already verified. Please login.' }, 400);
   }
 
-  // If Kyc not verified, use shufti's response to provide verification page
   try {
-    const verificationData = await verifyUser(user.kycReferenceId);
+    // Generate a new kycReferenceId for a new verification session
+    const newKycReferenceId = nanoid();
+
+    // Update the user's kycReferenceId
+    user.kycReferenceId = newKycReferenceId;
+    await user.save();
+
+    // Delete any existing KycRecord for this user to start a fresh session
+    await KycRecord.deleteMany({ userId: user._id });
+
+    const verificationData = await verifyUser(newKycReferenceId);
 
     // Create a new KycRecord
     const kycRecord = await KycRecord.create({
