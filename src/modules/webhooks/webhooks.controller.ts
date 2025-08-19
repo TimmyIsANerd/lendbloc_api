@@ -1,5 +1,6 @@
 import { type Context } from 'hono';
 import User from '../../models/User'; // Import the User model
+import Wallet from '../../models/Wallet'; // Import the Wallet model
 
 export const shuftiRedirect = async (c: Context) => {
     // This redirect is for the user's browser after verification, not the webhook callback.
@@ -89,3 +90,38 @@ export const shuftiCallback = async (c: Context) => {
         return c.json({ message: 'Internal server error' }, 500);
     }
 }
+
+export const tatumCallback = async (c: Context) => {
+    try {
+        const body = await c.req.json();
+        console.log('Tatum Webhook Received:', JSON.stringify(body, null, 2));
+
+        // Tatum webhook payload for address transaction usually contains:
+        // { "address": "wallet_address", "amount": "transaction_amount", "txId": "transaction_id", "currency": "BTC", "chain": "bitcoin" }
+        const { address, amount, txId, currency, chain } = body;
+
+        if (!address || !amount || !txId) {
+            console.error('Tatum Callback: Missing required fields (address, amount, txId)');
+            return c.json({ message: 'Missing required fields' }, 400);
+        }
+
+        const wallet = await Wallet.findOne({ address });
+
+        if (!wallet) {
+            console.error(`Tatum Callback: Wallet not found for address: ${address}`);
+            return c.json({ message: 'Wallet not found' }, 404);
+        }
+
+        // Update wallet balance
+        wallet.balance = (wallet.balance || 0) + parseFloat(amount);
+        await wallet.save();
+
+        console.log(`Wallet ${wallet.address} balance updated. New balance: ${wallet.balance}. Transaction ID: ${txId}`);
+
+        return c.json({ message: 'Tatum webhook processed successfully' }, 200);
+
+    } catch (error) {
+        console.error('Error processing Tatum callback:', error);
+        return c.json({ message: 'Internal server error' }, 500);
+    }
+};

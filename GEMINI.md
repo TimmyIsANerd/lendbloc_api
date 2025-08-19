@@ -122,6 +122,8 @@ This section will be updated after each task to track the progress of the projec
 - [x] JSDoc for Twilio `sendOtp` function
 - [x] Shufti Pro Integration (`src/helpers/shufti/index.ts`)
 - [x] Corrected Shufti Pro API authentication
+- [x] Tatum Wallet Notification Subscription (`src/helpers/wallet/tatum/index.ts`)
+- [x] Tatum Webhook Handler (`src/modules/webhooks/webhooks.controller.ts`)
 
 ### Email Templates
 - [x] Improved UI and UX-centered copy for all email templates

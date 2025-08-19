@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { shuftiCallback, shuftiRedirect } from './webhooks.controller';
+import { shuftiCallback, shuftiRedirect, tatumCallback } from './webhooks.controller';
 
 const webhooks = new Hono();
 
@@ -8,7 +8,7 @@ webhooks.post("/shufti/callback", shuftiCallback);
 
 webhooks.get("/shufti/redirect", shuftiRedirect);
 
-
+webhooks.post('/tatum', tatumCallback);
 
 
 export default webhooks;
