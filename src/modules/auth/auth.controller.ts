@@ -15,7 +15,8 @@ import { otpVerificationEmail } from '../../templates/otp-verification';
 import { passwordResetRequestEmail } from '../../templates/password-reset-request';
 import { initializeWalletSystem } from '../../helpers/wallet/index';
 import { nanoid } from 'nanoid';
-import { verifyUser } from '../../helpers/shufti';
+import { verifyUser, getVerificationStatus } from '../../helpers/shufti';
+import KycRecord, { KycStatus } from '../../models/KycRecord';
 
 import {
   registerUserSchema,
@@ -264,7 +265,16 @@ export const initializeKYC = async (c: Context) => {
   // If Kyc not verified, use shufti's response to provide verification page
   try {
     const verificationData = await verifyUser(user.kycReferenceId);
-    return c.json({ verificationData });
+
+    // Create a new KycRecord
+    const kycRecord = await KycRecord.create({
+      userId: user._id,
+      status: KycStatus.PENDING,
+      shuftiReferenceId: verificationData.reference,
+      shuftiEvent: verificationData.event,
+    });
+
+    return c.json({ verificationData, userId: user._id, kycReferenceId: user.kycReferenceId, kycRecordId: kycRecord._id });
   } catch (error: any) {
     console.error('Error initializing KYC:', error.message);
     return c.json({ error: 'Failed to initialize KYC verification.' }, 500);
