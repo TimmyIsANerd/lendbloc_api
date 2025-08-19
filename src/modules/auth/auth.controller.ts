@@ -15,7 +15,7 @@ import { otpVerificationEmail } from '../../templates/otp-verification';
 import { passwordResetRequestEmail } from '../../templates/password-reset-request';
 import { initializeWalletSystem } from '../../helpers/wallet/index';
 import { nanoid } from 'nanoid';
-import shuftiPro, { ShuftiType, ShuftiVerifyParams } from '../../helpers/shufti';
+import shuftiPro, { ShuftiType, type ShuftiVerifyParams } from '../../helpers/shufti';
 import KycRecord, { KycStatus } from '../../models/KycRecord';
 
 import {
@@ -32,6 +32,7 @@ import {
   kycAddressSchema,
   kycConsentSchema,
   kycBackgroundChecksSchema,
+  getKycStatusSchema,
   refreshTokenSchema,
   logoutSchema,
   validatePasswordResetOTPSchema,
@@ -64,6 +65,21 @@ const checkKycStatus = async (userId: string) => {
     }
   }
   return false;
+};
+
+export const getKycStatus = async (c: Context) => {
+  const { userId } = c.req.valid('query' as never) as z.infer<typeof getKycStatusSchema>;
+
+  const kycRecord = await KycRecord.findOne({ userId }).select('status shuftiVerificationResult');
+
+  if (!kycRecord) {
+    return c.json({ status: 'not_started', message: 'KYC verification has not been initiated.' });
+  }
+
+  return c.json({
+    status: kycRecord.status,
+    verificationDetails: kycRecord.shuftiVerificationResult,
+  });
 };
 
 export const kycDocument = async (c: Context) => {

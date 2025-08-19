@@ -39,6 +39,15 @@ export const kycAddressSchema = z.object({
   fullAddress: z.string().min(10),
 });
 
+export const kycConsentSchema = z.object({
+  userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
+  text: z.string().optional(),
+});
+
+export const kycBackgroundChecksSchema = z.object({
+  userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
+});
+
 export const loginUserSchema = z.object({
   email: z.string().optional(),
   phone: z.string().optional(),
@@ -80,11 +89,6 @@ export const logoutSchema = z.object({
   clientDevice: z.enum(['web', 'mobile']),
 });
 
-export const kycConsentSchema = z.object({
-  userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
-  text: z.string().optional(),
-});
-
-export const kycBackgroundChecksSchema = z.object({
+export const getKycStatusSchema = z.object({
   userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
 });
