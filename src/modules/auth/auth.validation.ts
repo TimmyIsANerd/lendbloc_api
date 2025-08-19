@@ -42,7 +42,7 @@ export const kycConsentSchema = z.object({
   text: z.string().optional(),
 });
 
-export const kycBackgroundChecksSchema = z.object({
+export const submitKycSchema = z.object({
   userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
 });
 

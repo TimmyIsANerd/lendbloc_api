@@ -1,62 +1,50 @@
 import axios, { type AxiosError, type AxiosInstance } from "axios";
 import crypto from "crypto";
 
-export enum ShuftiType {
-  DOCUMENT = "document",
-  FACE = "face",
-  ADDRESS = "address",
-  CONSENT = "consent",
-  BACKGROUND_CHECKS = "background_checks",
-}
-
-export type BaseParams = {
-  reference?: string;
-  callback_url?: string;
+// Individual proof params
+export type DocumentProof = {
+    proof: string; // base64
+    name: string;
+    dob: string; // YYYY-MM-DD
+    supported_types?: Array<"id_card" | "driving_license" | "passport">;
 };
 
-export type DocumentParams = BaseParams & {
-  type: ShuftiType.DOCUMENT;
-  imageBase64: string; // "data:image/jpeg;base64,...." or raw base64
-  name: string;
-  dob: string; // YYYY-MM-DD
-  supportedTypes?: Array<"id_card" | "driving_license" | "passport">;
+export type FaceProof = {
+    proof: string; // base64
 };
 
-export type FaceParams = BaseParams & {
-  type: ShuftiType.FACE;
-  imageBase64: string;
+export type AddressProof = {
+    proof: string; // base64
+    full_address: string;
+    supported_types?: Array<"id_card" | "bank_statement" | "driving_license" | "utility_bill">;
 };
 
-export type AddressParams = BaseParams & {
-  type: ShuftiType.ADDRESS;
-  imageBase64: string;
-  fullAddress: string;
-  supportedTypes?: Array<"id_card" | "bank_statement" | "driving_license" | "utility_bill">;
+export type ConsentProof = {
+    proof: string; // base64
+    text?: string;
+    supported_types?: Array<"handwritten" | "printed">;
 };
 
-export type ConsentParams = BaseParams & {
-  type: ShuftiType.CONSENT;
-  imageBase64: string;
-  supportedTypes?: Array<"handwritten" | "printed">;
-  text?: string; // consent text to match
+export type BackgroundChecksProof = {
+    name: {
+        first_name: string;
+        last_name: string;
+        middle_name?: string;
+    };
+    dob: string; // YYYY-MM-DD
 };
 
-export type BackgroundChecksParams = BaseParams & {
-  type: ShuftiType.BACKGROUND_CHECKS;
-  firstName: string;
-  lastName: string;
-  middleName?: string;
-  dob: string; // YYYY-MM-DD
+// The main params object for the verify method
+export type ShuftiVerifyPayload = {
+    reference: string;
+    callback_url?: string;
+    document?: DocumentProof;
+    face?: FaceProof;
+    address?: AddressProof;
+    consent?: ConsentProof;
+    background_checks?: BackgroundChecksProof;
 };
 
-export type ShuftiVerifyParams =
-  | DocumentParams
-  | FaceParams
-  | AddressParams
-  | ConsentParams
-  | BackgroundChecksParams;
-
-// You can refine this to exact ShuftiPro schemas if you have them handy.
 export interface ShuftiResponse {
   event?: string; // e.g., "verification.accepted" | "verification.declined"
   declined_reason?: string;
@@ -88,14 +76,45 @@ class ShuftiPro {
     });
   }
 
-  /**
-   * Public API: performs a verification for the specific type with a clean, typed interface.
-   */
-  async verify(params: ShuftiVerifyParams): Promise<ShuftiResponse> {
-    const body = this.buildRequestBody(params);
+  async verify(payload: ShuftiVerifyPayload): Promise<ShuftiResponse> {
+    const requestBody: any = {
+        reference: payload.reference,
+        callback_url: payload.callback_url ?? this.cfg.defaultCallbackUrl,
+    };
+
+    if (payload.document) {
+        requestBody.document = {
+            proof: payload.document.proof,
+            name: payload.document.name,
+            dob: payload.document.dob,
+            supported_types: payload.document.supported_types ?? ["id_card", "driving_license", "passport"],
+        };
+    }
+    if (payload.face) {
+        requestBody.face = {
+            proof: payload.face.proof,
+        };
+    }
+    if (payload.address) {
+        requestBody.address = {
+            proof: payload.address.proof,
+            full_address: payload.address.full_address,
+            supported_types: payload.address.supported_types ?? ["id_card", "bank_statement", "driving_license", "utility_bill"],
+        };
+    }
+    if (payload.consent) {
+        requestBody.consent = {
+            proof: payload.consent.proof,
+            text: payload.consent.text,
+            supported_types: payload.consent.supported_types ?? ["handwritten", "printed"],
+        };
+    }
+    if (payload.background_checks) {
+        requestBody.background_checks = payload.background_checks;
+    }
+
     try {
-      // Adjust path to match the specific Shufti endpoint you're using, e.g. "/"
-      const { data } = await this.axios.post<ShuftiResponse>("/", body);
+      const { data } = await this.axios.post<ShuftiResponse>("/", requestBody);
 
       if (data?.event === "verification.declined") {
         const reason = data.declined_reason || data?.error?.message || "Verification declined";
@@ -108,63 +127,7 @@ class ShuftiPro {
     }
   }
 
-  // ---------- Internals ----------
-
-  private buildRequestBody(params: ShuftiVerifyParams): Record<string, unknown> {
-    const reference = params.reference ?? this.generateReference();
-    const callback_url = params.callback_url ?? this.cfg.defaultCallbackUrl;
-
-    const builders: Record<ShuftiType, (p: any) => Record<string, unknown>> = {
-      [ShuftiType.DOCUMENT]: (p: DocumentParams) => ({
-        document: {
-          proof: p.imageBase64,
-          supported_types: p.supportedTypes ?? ["id_card", "driving_license", "passport"],
-          name: [p.name],
-          dob: p.dob,
-        },
-      }),
-      [ShuftiType.FACE]: (p: FaceParams) => ({
-        face: {
-          proof: p.imageBase64,
-        },
-      }),
-      [ShuftiType.ADDRESS]: (p: AddressParams) => ({
-        address: {
-          proof: p.imageBase64,
-          full_address: p.fullAddress,
-          supported_types: p.supportedTypes ?? ["id_card", "bank_statement", "driving_license", "utility_bill"],
-        },
-      }),
-      [ShuftiType.CONSENT]: (p: ConsentParams) => ({
-        consent: {
-          proof: p.imageBase64,
-          supported_types: p.supportedTypes ?? ["handwritten", "printed"],
-          text: p.text ?? "I consent to verification",
-        },
-      }),
-      [ShuftiType.BACKGROUND_CHECKS]: (p: BackgroundChecksParams) => ({
-        background_checks: {
-          name: {
-            first_name: p.firstName,
-            middle_name: p.middleName ?? "",
-            last_name: p.lastName,
-          },
-          dob: p.dob,
-        },
-      }),
-    };
-
-    const section = builders[params.type](params as any);
-
-    return {
-      reference,
-      ...(callback_url ? { callback_url } : {}),
-      ...section,
-    };
-  }
-
-  private generateReference(len = 20): string {
-    // 15 bytes -> 20 base64url chars approx; safer than Math.random
+  generateReference(len = 20): string {
     return crypto.randomBytes(15).toString("base64url").slice(0, len);
   }
 

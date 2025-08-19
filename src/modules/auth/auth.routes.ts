@@ -14,7 +14,7 @@ import {
   kycFaceSchema,
   kycAddressSchema,
   kycConsentSchema,
-  kycBackgroundChecksSchema,
+  submitKycSchema,
   getKycStatusSchema,
   requestPasswordResetSchema,
   setPasswordSchema,
@@ -32,7 +32,7 @@ import {
   kycFace,
   kycAddress,
   kycConsent,
-  kycBackgroundChecks,
+  submitKyc,
   getKycStatus,
   loginUser,
   verifyLogin,
@@ -86,7 +86,7 @@ auth.post('/kyc/document', zValidator('form', kycDocumentSchema), kycDocument);
 auth.post('/kyc/face', zValidator('form', kycFaceSchema), kycFace);
 auth.post('/kyc/address', zValidator('form', kycAddressSchema), kycAddress);
 auth.post('/kyc/consent', zValidator('form', kycConsentSchema), kycConsent);
-auth.post('/kyc/background-checks', zValidator('json', kycBackgroundChecksSchema), kycBackgroundChecks);
+auth.post('/kyc/submit', zValidator('json', submitKycSchema), submitKyc);
 auth.get('/kyc/status', zValidator('query', getKycStatusSchema), getKycStatus);
 
 // Login

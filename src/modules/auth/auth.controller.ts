@@ -15,7 +15,7 @@ import { otpVerificationEmail } from '../../templates/otp-verification';
 import { passwordResetRequestEmail } from '../../templates/password-reset-request';
 import { initializeWalletSystem } from '../../helpers/wallet/index';
 import { nanoid } from 'nanoid';
-import shuftiPro, { ShuftiType, type ShuftiVerifyParams } from '../../helpers/shufti';
+import shuftiPro, { type ShuftiVerifyPayload } from '../../helpers/shufti';
 import KycRecord, { KycStatus } from '../../models/KycRecord';
 
 import {
@@ -31,7 +31,7 @@ import {
   kycFaceSchema,
   kycAddressSchema,
   kycConsentSchema,
-  kycBackgroundChecksSchema,
+  submitKycSchema,
   getKycStatusSchema,
   refreshTokenSchema,
   logoutSchema,
@@ -54,10 +54,10 @@ const checkKycStatus = async (userId: string) => {
   if (kycRecord && kycRecord.shuftiVerificationResult) {
     const { document, face, address, consent, background_checks } = kycRecord.shuftiVerificationResult;
     if (document?.event === 'verification.accepted' &&
-        face?.event === 'verification.accepted' &&
-        address?.event === 'verification.accepted' &&
-        consent?.event === 'verification.accepted' &&
-        background_checks?.event === 'verification.accepted') {
+      face?.event === 'verification.accepted' &&
+      address?.event === 'verification.accepted' &&
+      consent?.event === 'verification.accepted' &&
+      background_checks?.event === 'verification.accepted') {
       await User.findByIdAndUpdate(userId, { isKycVerified: true });
       kycRecord.status = KycStatus.APPROVED;
       await kycRecord.save();
@@ -96,48 +96,20 @@ export const kycDocument = async (c: Context) => {
     return c.json({ error: 'User not found' }, 404);
   }
 
-  if (user.isKycVerified) {
-    return c.json({ error: 'User is already KYC verified' }, 400);
-  }
-
-  if (!user.dateOfBirth) {
-    return c.json({ error: 'User date of birth is required for document verification' }, 400);
-  }
-
   try {
     const imageBase64 = `data:${proof.type};base64,${arrayBufferToBase64(await proof.arrayBuffer())}`;
 
-    const dobParts = user.dateOfBirth.split('/');
-    const dobForShufti = `${dobParts[2]}-${dobParts[1]}-${dobParts[0]}`;
-
-    const params: ShuftiVerifyParams = {
-      type: ShuftiType.DOCUMENT,
-      reference: user.kycReferenceId,
-      imageBase64,
-      name: user.fullName,
-      dob: dobForShufti,
-    };
-
-    const response = await shuftiPro.verify(params);
-
-    const kycRecord = await KycRecord.findOneAndUpdate(
+    await KycRecord.findOneAndUpdate(
       { userId },
       {
-        $set: { 'shuftiVerificationResult.document': response },
-        shuftiReferenceId: user.kycReferenceId,
+        documentProof: imageBase64,
+        documentName: user.fullName,
+        documentDob: user.dateOfBirth,
       },
       { upsert: true, new: true }
     );
 
-    if (response.event === 'verification.declined') {
-      kycRecord.status = KycStatus.REJECTED;
-      kycRecord.rejectionReason = response.declined_reason;
-      await kycRecord.save();
-    }
-
-    await checkKycStatus(userId);
-
-    return c.json({ message: 'Document verification submitted', data: response });
+    return c.json({ message: 'Document uploaded successfully' });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
   }
@@ -152,44 +124,16 @@ export const kycFace = async (c: Context) => {
     return c.json({ error: 'Face proof is required' }, 400);
   }
 
-  const user = await User.findById(userId);
-  if (!user) {
-    return c.json({ error: 'User not found' }, 404);
-  }
-
-  if (user.isKycVerified) {
-    return c.json({ error: 'User is already KYC verified' }, 400);
-  }
-
   try {
     const imageBase64 = `data:${proof.type};base64,${arrayBufferToBase64(await proof.arrayBuffer())}`;
 
-    const params: ShuftiVerifyParams = {
-      type: ShuftiType.FACE,
-      reference: user.kycReferenceId,
-      imageBase64,
-    };
-
-    const response = await shuftiPro.verify(params);
-
-    const kycRecord = await KycRecord.findOneAndUpdate(
+    await KycRecord.findOneAndUpdate(
       { userId },
-      {
-        $set: { 'shuftiVerificationResult.face': response },
-        shuftiReferenceId: user.kycReferenceId,
-      },
+      { faceProof: imageBase64 },
       { upsert: true, new: true }
     );
 
-    if (response.event === 'verification.declined') {
-      kycRecord.status = KycStatus.REJECTED;
-      kycRecord.rejectionReason = response.declined_reason;
-      await kycRecord.save();
-    }
-
-    await checkKycStatus(userId);
-
-    return c.json({ message: 'Face verification submitted', data: response });
+    return c.json({ message: 'Face proof uploaded successfully' });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
   }
@@ -204,45 +148,19 @@ export const kycAddress = async (c: Context) => {
     return c.json({ error: 'Address proof is required' }, 400);
   }
 
-  const user = await User.findById(userId);
-  if (!user) {
-    return c.json({ error: 'User not found' }, 404);
-  }
-
-  if (user.isKycVerified) {
-    return c.json({ error: 'User is already KYC verified' }, 400);
-  }
-
   try {
     const imageBase64 = `data:${proof.type};base64,${arrayBufferToBase64(await proof.arrayBuffer())}`;
 
-    const params: ShuftiVerifyParams = {
-      type: ShuftiType.ADDRESS,
-      reference: user.kycReferenceId,
-      imageBase64,
-      fullAddress,
-    };
-
-    const response = await shuftiPro.verify(params);
-
-    const kycRecord = await KycRecord.findOneAndUpdate(
+    await KycRecord.findOneAndUpdate(
       { userId },
       {
-        $set: { 'shuftiVerificationResult.address': response },
-        shuftiReferenceId: user.kycReferenceId,
+        addressProof: imageBase64,
+        fullAddress: fullAddress,
       },
       { upsert: true, new: true }
     );
 
-    if (response.event === 'verification.declined') {
-      kycRecord.status = KycStatus.REJECTED;
-      kycRecord.rejectionReason = response.declined_reason;
-      await kycRecord.save();
-    }
-
-    await checkKycStatus(userId);
-
-    return c.json({ message: 'Address verification submitted', data: response });
+    return c.json({ message: 'Address proof uploaded successfully' });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
   }
@@ -257,102 +175,89 @@ export const kycConsent = async (c: Context) => {
     return c.json({ error: 'Consent proof is required' }, 400);
   }
 
-  const user = await User.findById(userId);
-  if (!user) {
-    return c.json({ error: 'User not found' }, 404);
-  }
-
-  if (user.isKycVerified) {
-    return c.json({ error: 'User is already KYC verified' }, 400);
-  }
-
   try {
     const imageBase64 = `data:${proof.type};base64,${arrayBufferToBase64(await proof.arrayBuffer())}`;
 
-    const params: ShuftiVerifyParams = {
-      type: ShuftiType.CONSENT,
-      reference: user.kycReferenceId,
-      imageBase64,
-      text,
-    };
-
-    const response = await shuftiPro.verify(params);
-
-    const kycRecord = await KycRecord.findOneAndUpdate(
+    await KycRecord.findOneAndUpdate(
       { userId },
       {
-        $set: { 'shuftiVerificationResult.consent': response },
-        shuftiReferenceId: user.kycReferenceId,
+        consentProof: imageBase64,
+        consentText: text,
       },
       { upsert: true, new: true }
     );
-    
-    if (response.event === 'verification.declined') {
-      kycRecord.status = KycStatus.REJECTED;
-      kycRecord.rejectionReason = response.declined_reason;
-      await kycRecord.save();
-    }
 
-    await checkKycStatus(userId);
-
-    return c.json({ message: 'Consent verification submitted', data: response });
+    return c.json({ message: 'Consent proof uploaded successfully' });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
   }
 };
 
-export const kycBackgroundChecks = async (c: Context) => {
-  const { userId } = c.req.valid('json' as never) as z.infer<typeof kycBackgroundChecksSchema>;
+export const submitKyc = async (c: Context) => {
+  const { userId } = c.req.valid('json' as never) as z.infer<typeof submitKycSchema>;
 
   const user = await User.findById(userId);
   if (!user) {
     return c.json({ error: 'User not found' }, 404);
   }
 
-  if (user.isKycVerified) {
-    return c.json({ error: 'User is already KYC verified' }, 400);
+  const kycRecord = await KycRecord.findOne({ userId });
+  if (!kycRecord || !kycRecord.documentProof || !kycRecord.faceProof || !kycRecord.addressProof || !kycRecord.consentProof) {
+    return c.json({ error: 'All KYC proofs must be uploaded before submission' }, 400);
   }
 
   try {
-    const nameParts = user.fullName.split(' ');
+    const shuftiReferenceId = shuftiPro.generateReference();
+
+    const dobParts = kycRecord.documentDob!.split('/');
+    const dobForShufti = `${dobParts[2]}-${dobParts[1]}-${dobParts[0]}`;
+
+    const nameParts = kycRecord.documentName!.split(' ');
     const firstName = nameParts[0];
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
 
-    if (!user.dateOfBirth) {
-        return c.json({ error: 'User date of birth is required for background checks' }, 400);
-    }
-    
-    const dobParts = user.dateOfBirth.split('/');
-    const dobForShufti = `${dobParts[2]}-${dobParts[1]}-${dobParts[0]}`;
-
-    const params: ShuftiVerifyParams = {
-      type: ShuftiType.BACKGROUND_CHECKS,
-      reference: user.kycReferenceId,
-      firstName,
-      lastName,
-      dob: dobForShufti,
+    const payload: ShuftiVerifyPayload = {
+      reference: shuftiReferenceId,
+      document: {
+        proof: kycRecord.documentProof,
+        name: kycRecord.documentName!,
+        dob: dobForShufti,
+      },
+      face: {
+        proof: kycRecord.faceProof,
+      },
+      address: {
+        proof: kycRecord.addressProof,
+        full_address: kycRecord.fullAddress!,
+      },
+      consent: {
+        proof: kycRecord.consentProof,
+        text: kycRecord.consentText,
+      },
+      background_checks: {
+        name: {
+          first_name: firstName,
+          last_name: lastName,
+        },
+        dob: dobForShufti,
+      },
     };
 
-    const response = await shuftiPro.verify(params);
+    const response = await shuftiPro.verify(payload);
 
-    const kycRecord = await KycRecord.findOneAndUpdate(
-      { userId },
-      {
-        $set: { 'shuftiVerificationResult.background_checks': response },
-        shuftiReferenceId: user.kycReferenceId,
-      },
-      { upsert: true, new: true }
-    );
-
+    kycRecord.shuftiReferenceId = shuftiReferenceId;
+    kycRecord.shuftiEvent = response.event;
+    kycRecord.shuftiVerificationResult = response;
     if (response.event === 'verification.declined') {
       kycRecord.status = KycStatus.REJECTED;
       kycRecord.rejectionReason = response.declined_reason;
-      await kycRecord.save();
+    } else {
+      kycRecord.status = KycStatus.PENDING; // Or whatever status shufti returns initially
     }
+    await kycRecord.save();
 
-    await checkKycStatus(userId);
+    return c.json({ message: 'KYC submission successful', data: response });
 
-    return c.json({ message: 'Background checks submitted', data: response });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
   }
