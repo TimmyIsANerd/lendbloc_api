@@ -317,10 +317,10 @@ export const confirmKYCStatus = async (c: Context) => {
     const verificationStatus = await getVerificationStatus(user.kycReferenceId);
 
     kycRecord.shuftiEvent = verificationStatus.event;
-    kycRecord.shuftiVerificationResult = verificationStatus.verification_result;
+    kycRecord.shuftiVerificationResult = verificationStatus.verification_result; // Store the entire object
     kycRecord.reviewedAt = new Date();
 
-    if (verificationStatus.event === 'verification.accepted' && verificationStatus.verification_result === 'accepted') {
+    if (verificationStatus.event === 'verification.accepted') { // Check only event for acceptance
       user.isKycVerified = true;
       kycRecord.status = KycStatus.APPROVED;
       await user.save();
@@ -350,7 +350,7 @@ export const confirmKYCStatus = async (c: Context) => {
 
       return c.json({ accessToken, message: "Login & KYC verification successful" });
 
-    } else if (verificationStatus.event === 'verification.declined' || verificationStatus.verification_result === 'declined') {
+    } else if (verificationStatus.event === 'verification.declined') { // Check only event for decline
       kycRecord.status = KycStatus.REJECTED;
       kycRecord.rejectionReason = verificationStatus.declined_reason || 'Verification declined by Shufti Pro.';
       await kycRecord.save();

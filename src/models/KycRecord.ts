@@ -23,7 +23,7 @@ export interface IKycRecord extends Document {
   status: KycStatus;
   shuftiReferenceId?: string; // Shufti Pro reference ID
   shuftiEvent?: string; // Shufti Pro event (e.g., verification.accepted)
-  shuftiVerificationResult?: string; // Shufti Pro verification_result (e.g., accepted, declined)
+  shuftiVerificationResult?: any; // Shufti Pro verification_result (can be an object)
   shuftiDeclinedReason?: string; // Shufti Pro declined_reason
   idDocumentType?: IdDocumentType;
   idDocumentNumber?: string;
@@ -46,7 +46,7 @@ const KycRecordSchema: Schema = new Schema(
     status: { type: String, enum: Object.values(KycStatus), default: KycStatus.PENDING },
     shuftiReferenceId: { type: String, unique: true, sparse: true }, // Make it unique and sparse for optional field
     shuftiEvent: { type: String },
-    shuftiVerificationResult: { type: String },
+    shuftiVerificationResult: { type: Schema.Types.Mixed },
     shuftiDeclinedReason: { type: String },
     idDocumentType: { type: String, enum: Object.values(IdDocumentType) },
     idDocumentNumber: { type: String },
