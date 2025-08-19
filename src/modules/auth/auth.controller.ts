@@ -77,7 +77,7 @@ export const registerUser = async (c: Context) => {
       if (referrerUser) {
         // Try to find existing referral for the referrer
         const existingReferral = await Referral.findOne({ user: referrerUser._id });
-        
+
         if (existingReferral) {
           // Update existing referral by adding the new user to referredUsers
           await Referral.findByIdAndUpdate(
@@ -387,8 +387,7 @@ export const loginUser = async (c: Context) => {
   }
 
 
-
-  return c.json({ message: 'An OTP has been sent to your email/phone.' });
+  return c.json({ message: 'An OTP has been sent to your email/phone.', userId: user.id });
 };
 
 export const verifyLogin = async (c: Context) => {
