@@ -13,6 +13,8 @@ import {
   kycDocumentSchema,
   kycFaceSchema,
   kycAddressSchema,
+  kycConsentSchema,
+  kycBackgroundChecksSchema,
   requestPasswordResetSchema,
   setPasswordSchema,
   refreshTokenSchema,
@@ -28,6 +30,8 @@ import {
   kycDocument,
   kycFace,
   kycAddress,
+  kycConsent,
+  kycBackgroundChecks,
   loginUser,
   verifyLogin,
   requestPasswordReset,
@@ -74,6 +78,8 @@ auth.post("/verify/phone", zValidator('json', verifyPhoneSchema), verifyPhone);
 auth.post('/kyc/document', zValidator('form', kycDocumentSchema), kycDocument);
 auth.post('/kyc/face', zValidator('form', kycFaceSchema), kycFace);
 auth.post('/kyc/address', zValidator('form', kycAddressSchema), kycAddress);
+auth.post('/kyc/consent', zValidator('form', kycConsentSchema), kycConsent);
+auth.post('/kyc/background-checks', zValidator('json', kycBackgroundChecksSchema), kycBackgroundChecks);
 auth.post('/login', zValidator('json', loginUserSchema), loginUser);
 auth.post('/verify-login', zValidator('json', verifyOtpSchema), verifyLogin);
 auth.post(

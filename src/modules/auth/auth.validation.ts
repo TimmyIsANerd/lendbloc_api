@@ -79,3 +79,12 @@ export const refreshTokenSchema = z.object({
 export const logoutSchema = z.object({
   clientDevice: z.enum(['web', 'mobile']),
 });
+
+export const kycConsentSchema = z.object({
+  userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
+  text: z.string().optional(),
+});
+
+export const kycBackgroundChecksSchema = z.object({
+  userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
+});
