@@ -24,14 +24,20 @@ export const verifyPhoneSchema = z.object({
   otp: z.string().length(6),
 });
 
-export const initializeKYCSchema = z.object({
+export const kycDocumentSchema = z.object({
   userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
-})
+  name: z.string(),
+  dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
+});
 
-export const confirmKYCStatusSchema = z.object({
-  clientDevice: z.enum(['web', 'mobile']),
+export const kycFaceSchema = z.object({
   userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
-})
+});
+
+export const kycAddressSchema = z.object({
+  userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
+  fullAddress: z.string().min(10),
+});
 
 export const loginUserSchema = z.object({
   email: z.string().optional(),

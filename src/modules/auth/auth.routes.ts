@@ -10,8 +10,9 @@ import {
   verifyPhoneSchema,
   loginUserSchema,
   verifyOtpSchema,
-  initializeKYCSchema,
-  confirmKYCStatusSchema,
+  kycDocumentSchema,
+  kycFaceSchema,
+  kycAddressSchema,
   requestPasswordResetSchema,
   setPasswordSchema,
   refreshTokenSchema,
@@ -24,8 +25,9 @@ import {
   verifyEmail,
   sendPhone,
   verifyPhone,
-  initializeKYC,
-  confirmKYCStatus,
+  kycDocument,
+  kycFace,
+  kycAddress,
   loginUser,
   verifyLogin,
   requestPasswordReset,
@@ -69,8 +71,9 @@ auth.post('/register', zValidator('json', registerUserSchema), registerUser);
 auth.post("/verify/email", zValidator('json', verifyEmailSchema), verifyEmail);
 auth.post("/send/phone", zValidator('json', requestPhoneOtpSchema), phoneLimiter, sendPhone);
 auth.post("/verify/phone", zValidator('json', verifyPhoneSchema), verifyPhone);
-auth.post("/initialize-kyc", zValidator('json', initializeKYCSchema), initializeKYC);
-auth.post("/verify-kyc", zValidator('json', confirmKYCStatusSchema), confirmKYCStatus)
+auth.post('/kyc/document', zValidator('form', kycDocumentSchema), kycDocument);
+auth.post('/kyc/face', zValidator('form', kycFaceSchema), kycFace);
+auth.post('/kyc/address', zValidator('form', kycAddressSchema), kycAddress);
 auth.post('/login', zValidator('json', loginUserSchema), loginUser);
 auth.post('/verify-login', zValidator('json', verifyOtpSchema), verifyLogin);
 auth.post(

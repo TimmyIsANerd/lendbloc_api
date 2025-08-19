@@ -15,7 +15,7 @@ import { otpVerificationEmail } from '../../templates/otp-verification';
 import { passwordResetRequestEmail } from '../../templates/password-reset-request';
 import { initializeWalletSystem } from '../../helpers/wallet/index';
 import { nanoid } from 'nanoid';
-import { verifyUser, getVerificationStatus } from '../../helpers/shufti';
+import shuftiPro, { ShuftiType, ShuftiVerifyParams } from '../../helpers/shufti';
 import KycRecord, { KycStatus } from '../../models/KycRecord';
 
 import {
@@ -27,13 +27,199 @@ import {
   setPasswordSchema,
   verifyEmailSchema,
   verifyPhoneSchema,
-  initializeKYCSchema,
-  confirmKYCStatusSchema,
+  kycDocumentSchema,
+  kycFaceSchema,
+  kycAddressSchema,
   refreshTokenSchema,
   logoutSchema,
   validatePasswordResetOTPSchema,
   editPhoneNumberSchema
 } from './auth.validation';
+
+const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+};
+
+const checkKycStatus = async (userId: string) => {
+  const kycRecord = await KycRecord.findOne({ userId });
+  if (kycRecord && kycRecord.shuftiVerificationResult) {
+    const { document, face, address } = kycRecord.shuftiVerificationResult;
+    if (document?.event === 'verification.accepted' &&
+        face?.event === 'verification.accepted' &&
+        address?.event === 'verification.accepted') {
+      await User.findByIdAndUpdate(userId, { isKycVerified: true });
+      kycRecord.status = KycStatus.APPROVED;
+      await kycRecord.save();
+      return true;
+    }
+  }
+  return false;
+};
+
+export const kycDocument = async (c: Context) => {
+  const body = await c.req.parseBody({ all: true });
+  const { userId, name, dob } = c.req.valid('form' as never) as z.infer<typeof kycDocumentSchema>;
+  const proof = body['proof'] as File;
+
+  if (!proof) {
+    return c.json({ error: 'Document proof is required' }, 400);
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    return c.json({ error: 'User not found' }, 404);
+  }
+
+  if (user.isKycVerified) {
+    return c.json({ error: 'User is already KYC verified' }, 400);
+  }
+
+  try {
+    const imageBase64 = `data:${proof.type};base64,${arrayBufferToBase64(await proof.arrayBuffer())}`;
+
+    const params: ShuftiVerifyParams = {
+      type: ShuftiType.DOCUMENT,
+      reference: user.kycReferenceId,
+      imageBase64,
+      name,
+      dob,
+    };
+
+    const response = await shuftiPro.verify(params);
+
+    const kycRecord = await KycRecord.findOneAndUpdate(
+      { userId },
+      {
+        $set: { 'shuftiVerificationResult.document': response },
+        shuftiReferenceId: user.kycReferenceId,
+      },
+      { upsert: true, new: true }
+    );
+
+    if (response.event === 'verification.declined') {
+      kycRecord.status = KycStatus.REJECTED;
+      kycRecord.rejectionReason = response.declined_reason;
+      await kycRecord.save();
+    }
+
+    await checkKycStatus(userId);
+
+    return c.json({ message: 'Document verification submitted', data: response });
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};
+
+export const kycFace = async (c: Context) => {
+  const body = await c.req.parseBody({ all: true });
+  const { userId } = c.req.valid('form' as never) as z.infer<typeof kycFaceSchema>;
+  const proof = body['proof'] as File;
+
+  if (!proof) {
+    return c.json({ error: 'Face proof is required' }, 400);
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    return c.json({ error: 'User not found' }, 404);
+  }
+
+  if (user.isKycVerified) {
+    return c.json({ error: 'User is already KYC verified' }, 400);
+  }
+
+  try {
+    const imageBase64 = `data:${proof.type};base64,${arrayBufferToBase64(await proof.arrayBuffer())}`;
+
+    const params: ShuftiVerifyParams = {
+      type: ShuftiType.FACE,
+      reference: user.kycReferenceId,
+      imageBase64,
+    };
+
+    const response = await shuftiPro.verify(params);
+
+    const kycRecord = await KycRecord.findOneAndUpdate(
+      { userId },
+      {
+        $set: { 'shuftiVerificationResult.face': response },
+        shuftiReferenceId: user.kycReferenceId,
+      },
+      { upsert: true, new: true }
+    );
+
+    if (response.event === 'verification.declined') {
+      kycRecord.status = KycStatus.REJECTED;
+      kycRecord.rejectionReason = response.declined_reason;
+      await kycRecord.save();
+    }
+
+    await checkKycStatus(userId);
+
+    return c.json({ message: 'Face verification submitted', data: response });
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};
+
+export const kycAddress = async (c: Context) => {
+  const body = await c.req.parseBody({ all: true });
+  const { userId, fullAddress } = c.req.valid('form' as never) as z.infer<typeof kycAddressSchema>;
+  const proof = body['proof'] as File;
+
+  if (!proof) {
+    return c.json({ error: 'Address proof is required' }, 400);
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    return c.json({ error: 'User not found' }, 404);
+  }
+
+  if (user.isKycVerified) {
+    return c.json({ error: 'User is already KYC verified' }, 400);
+  }
+
+  try {
+    const imageBase64 = `data:${proof.type};base64,${arrayBufferToBase64(await proof.arrayBuffer())}`;
+
+    const params: ShuftiVerifyParams = {
+      type: ShuftiType.ADDRESS,
+      reference: user.kycReferenceId,
+      imageBase64,
+      fullAddress,
+    };
+
+    const response = await shuftiPro.verify(params);
+
+    const kycRecord = await KycRecord.findOneAndUpdate(
+      { userId },
+      {
+        $set: { 'shuftiVerificationResult.address': response },
+        shuftiReferenceId: user.kycReferenceId,
+      },
+      { upsert: true, new: true }
+    );
+
+    if (response.event === 'verification.declined') {
+      kycRecord.status = KycStatus.REJECTED;
+      kycRecord.rejectionReason = response.declined_reason;
+      await kycRecord.save();
+    }
+
+    await checkKycStatus(userId);
+
+    return c.json({ message: 'Address verification submitted', data: response });
+  } catch (error: any) {
+    return c.json({ error: error.message }, 500);
+  }
+};
 
 export const registerUser = async (c: Context) => {
   const { title, fullName, dateOfBirth, email, phone, password, referrer } = c.req.valid('json' as never) as z.infer<
@@ -42,11 +228,7 @@ export const registerUser = async (c: Context) => {
 
   const passwordHash = await bcrypt.hash(password, 10);
 
-  // Check Environment using process
-  // const isProduction = process.env.NODE_ENV === 'production';
-
   try {
-    // Check if a user with the same email or phone number already exists
     const existingUser = await User.findOne({
       $or: [
         { email: email },
@@ -72,21 +254,17 @@ export const registerUser = async (c: Context) => {
       referralId: nanoid(6)
     });
 
-    // Find Referrer and update referral record
     if (referrer) {
       const referrerUser = await User.findOne({ referralId: referrer });
       if (referrerUser) {
-        // Try to find existing referral for the referrer
         const existingReferral = await Referral.findOne({ user: referrerUser._id });
 
         if (existingReferral) {
-          // Update existing referral by adding the new user to referredUsers
           await Referral.findByIdAndUpdate(
             existingReferral._id,
-            { $addToSet: { referredUsers: user._id } } // $addToSet prevents duplicates
+            { $addToSet: { referredUsers: user._id } }
           );
         } else {
-          // Create new referral if none exists
           await Referral.create({
             user: referrerUser._id,
             referredUsers: [user._id],
@@ -95,8 +273,6 @@ export const registerUser = async (c: Context) => {
       }
     }
 
-    // Initialize Wallet Creation
-    // Add a guard to check if wallets are already initialized for this user
     const existingWallets = await Wallet.countDocuments({ userId: user._id });
     if (existingWallets === 0) {
       await initializeWalletSystem(user._id as string);
@@ -104,11 +280,9 @@ export const registerUser = async (c: Context) => {
       console.log(`Wallets already initialized for user ${user._id}. Skipping initialization.`);
     }
 
-    // Deliver Email Verification OTP
     const otpCode = await generateOtp();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // Expires in 10 minutes
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // Create OTP Record
     console.log('OTP Code:', otpCode);
 
     await Otp.findOneAndUpdate(
@@ -117,7 +291,6 @@ export const registerUser = async (c: Context) => {
       { upsert: true, new: true }
     );
 
-    // Send OTP to Email First
     sendEmail(user.email, '[LENDBLOCK] Email Verification OTP', otpVerificationEmail(otpCode, 10));
 
     return c.json({ message: 'User registered successfully', userId: user._id });
@@ -138,7 +311,6 @@ export const verifyEmail = async (c: Context) => {
     return c.json({ error: 'User not found' }, 404);
   }
 
-  // Check if Email is already verified
   if (user.isEmailVerified) {
     return c.json({ error: 'Email is already verified' }, 400);
   }
@@ -172,7 +344,6 @@ export const sendPhone = async (c: Context) => {
     return c.json({ error: 'User not found' }, 404);
   }
 
-  // Check if Phone Number is already verified
   if (user.isPhoneNumberVerified) {
     return c.json({ error: 'Phone number is already verified' }, 400);
   }
@@ -180,7 +351,6 @@ export const sendPhone = async (c: Context) => {
   const otpCode = await generateOtp();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-  // Create OTP Record
   console.log('OTP Code:', otpCode);
 
   await Otp.findOneAndUpdate(
@@ -189,7 +359,6 @@ export const sendPhone = async (c: Context) => {
     { upsert: true, new: true }
   );
 
-  // Deliver SMS OTP
   await sendSms(user.phoneNumber, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
 
   return c.json({ message: 'An OTP has been sent to your phone number.' });
@@ -245,134 +414,11 @@ export const editPhoneNumber = async (c: Context) => {
   return c.json({ message: 'Phone number updated successfully' });
 };
 
-export const initializeKYC = async (c: Context) => {
-  const { userId } = c.req.valid('json' as never) as z.infer<
-    typeof initializeKYCSchema
-  >;
-
-  // Find User using UserId
-  const user = await User.findById(userId);
-
-  if (!user) {
-    return c.json({ error: 'User not found' }, 404);
-  }
-
-  // Check if they haven't verified kyc
-  if (user.isKycVerified) {
-    return c.json({ error: 'User is already verified. Please login.' }, 400);
-  }
-
-  try {
-    // Generate a new kycReferenceId for a new verification session
-    const newKycReferenceId = nanoid();
-
-    // Update the user's kycReferenceId
-    user.kycReferenceId = newKycReferenceId;
-    await user.save();
-
-    // Delete any existing KycRecord for this user to start a fresh session
-    await KycRecord.deleteMany({ userId: user._id });
-
-    const verificationData = await verifyUser(newKycReferenceId);
-
-    // Create a new KycRecord
-    const kycRecord = await KycRecord.create({
-      userId: user._id,
-      status: KycStatus.PENDING,
-      shuftiReferenceId: verificationData.reference,
-      shuftiEvent: verificationData.event,
-    });
-
-    return c.json({ verificationData, userId: user._id, kycReferenceId: user.kycReferenceId, kycRecordId: kycRecord._id });
-  } catch (error: any) {
-    console.error('Error initializing KYC:', error.message);
-    return c.json({ error: 'Failed to initialize KYC verification.' }, 500);
-  }
-}
-
-export const confirmKYCStatus = async (c: Context) => {
-  const { userId, clientDevice } = c.req.valid('json' as never) as z.infer<
-    typeof confirmKYCStatusSchema
-  >;
-
-  // Find User using UserId
-  const user = await User.findById(userId);
-
-  if (!user) {
-    return c.json({ error: 'User not found' }, 404);
-  }
-
-  // Check if they haven't verified kyc
-  if (user.isKycVerified) {
-    return c.json({ error: 'User is already verified. Please login.' }, 400);
-  }
-
-  const kycRecord = await KycRecord.findOne({ userId: user._id });
-
-  if (!kycRecord) {
-    return c.json({ error: 'KYC record not found for this user.' }, 404);
-  }
-
-  try {
-    const verificationStatus = await getVerificationStatus(user.kycReferenceId);
-
-    kycRecord.shuftiEvent = verificationStatus.event;
-    kycRecord.shuftiVerificationResult = verificationStatus.verification_result; // Store the entire object
-    kycRecord.reviewedAt = new Date();
-
-    if (verificationStatus.event === 'verification.accepted') { // Check only event for acceptance
-      user.isKycVerified = true;
-      kycRecord.status = KycStatus.APPROVED;
-      await user.save();
-      await kycRecord.save();
-
-      // If Kyc is accepted, send access and refresh token to user to allow dashboard access
-      const secret = process.env.JWT_SECRET || 'your-secret-key';
-      const accessToken = await sign({ userId: user._id, exp: Math.floor(Date.now() / 1000) + (60 * 15) }, secret); // 15 minutes
-      const refreshToken = await sign({ userId: user._id, exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) }, secret); // 7 days
-
-      await RefreshToken.create({
-        userId: user._id,
-        token: refreshToken,
-        expiresAt: new Date(Date.now() + (1000 * 60 * 60 * 24 * 3)), // 3 Days
-      });
-
-      if (clientDevice === "mobile") {
-        return c.json({ accessToken, refreshToken, message: "Login & KYC verification successful" });
-      }
-
-      setCookie(c, 'refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'Strict',
-        maxAge: 60 * 60 * 24 * 3, // 3 days
-      });
-
-      return c.json({ accessToken, message: "Login & KYC verification successful" });
-
-    } else if (verificationStatus.event === 'verification.declined') { // Check only event for decline
-      kycRecord.status = KycStatus.REJECTED;
-      kycRecord.rejectionReason = verificationStatus.declined_reason || 'Verification declined by Shufti Pro.';
-      await kycRecord.save();
-      return c.json({ error: `KYC verification declined: ${kycRecord.rejectionReason}` }, 400);
-    } else {
-      // Status is pending or other unhandled status
-      kycRecord.status = KycStatus.PENDING;
-      await kycRecord.save();
-      return c.json({ error: 'KYC verification is still pending. Please try again later.' }, 400);
-    }
-  } catch (error: any) {
-    console.error('Error confirming KYC status:', error.message);
-    return c.json({ error: 'Failed to confirm KYC status.' }, 500);
-  }
-};
-
 export const loginUser = async (c: Context) => {
   const { email, phone, password } = c.req.valid('json' as never) as z.infer<
     typeof loginUserSchema
   >;
 
-  // Check if one or the other is provided
   if (!email && !phone) {
     return c.json({ error: 'Email or phone number is required' }, 400);
   }
@@ -399,7 +445,6 @@ export const loginUser = async (c: Context) => {
     return c.json({ error: 'Invalid credentials' }, 401);
   }
 
-  // Check if User's Email, Phone & Identity have been verified
   if (!user.isEmailVerified || !user.isPhoneNumberVerified) {
     return c.json({
       userId: user._id,
@@ -412,11 +457,9 @@ export const loginUser = async (c: Context) => {
   }
 
 
-  const otpCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // OTP valid for 10 minutes
+  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-
-  // @todo replace console.log with email/sms delivery
   console.log('OTP Code:', otpCode);
 
   await Otp.findOneAndUpdate(
@@ -426,10 +469,8 @@ export const loginUser = async (c: Context) => {
   );
 
   if (email) {
-    // Send Email to User
     sendEmail(user.email, '[LENDBLOCK] Login OTP', otpVerificationEmail(otpCode, 10));
   } else {
-    // Send SMS to User
     await sendSms(user.phoneNumber, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
   }
 
@@ -455,7 +496,6 @@ export const verifyLogin = async (c: Context) => {
   });
 
   if (!storedOtp || storedOtp.code !== otp || storedOtp.expiresAt < new Date()) {
-    // If OTP is invalid or expired, delete the OTP document
     if (storedOtp && storedOtp.expiresAt < new Date()) {
       await Otp.deleteOne({ _id: storedOtp?._id });
     }
@@ -513,8 +553,8 @@ export const requestPasswordReset = async (c: Context) => {
     return c.json({ error: 'User not found' }, 404);
   }
 
-  const otpCode = Math.floor(10000 + Math.random() * 90000).toString(); // 5-digit OTP
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // OTP valid for 10 minutes
+  const otpCode = Math.floor(10000 + Math.random() * 90000).toString();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
   console.log("OTP Code: ", otpCode);
 
@@ -525,10 +565,8 @@ export const requestPasswordReset = async (c: Context) => {
   );
 
   if (email) {
-    // Send Password Reset Email
     sendEmail(user.email, '[LENDBLOCK] Password Reset Request', passwordResetRequestEmail(otpCode, 10));
   } else {
-    // Send Password Reset SMS
     await sendSms(user.phoneNumber, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
   }
 
@@ -562,7 +600,6 @@ export const validatePasswordResetOTP = async (c: Context) => {
 
   await Otp.deleteOne({ _id: storedOtp._id });
 
-  // Set allowPasswordReset to false
   await User.findByIdAndUpdate(user._id, { allowPasswordReset: true });
 
   return c.json({ message: 'Password reset OTP validated successfully', userId: user._id });
@@ -595,7 +632,6 @@ export const setPassword = async (c: Context) => {
 
   await User.findByIdAndUpdate(user._id, { passwordHash });
 
-  // Set allowPasswordReset to false
   await User.findByIdAndUpdate(user._id, { allowPasswordReset: false });
 
   return c.json({ message: 'Password set successfully' });
@@ -624,7 +660,6 @@ export const refreshToken = async (c: Context) => {
       return c.json({ error: 'Invalid or expired refresh token' }, 401);
     }
 
-    // Invalidate the old refresh token
     await RefreshToken.deleteOne({ _id: storedRefreshToken._id });
 
     const newAccessToken = await sign({ userId: decoded.userId, exp: Math.floor(Date.now() / 1000) + (60 * 15) }, secret);
