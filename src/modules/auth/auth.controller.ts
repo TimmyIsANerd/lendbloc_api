@@ -279,9 +279,6 @@ export const initializeKYC = async (c: Context) => {
     console.error('Error initializing KYC:', error.message);
     return c.json({ error: 'Failed to initialize KYC verification.' }, 500);
   }
-
-
-  return c.json({ message: "KYC Initialized" }, 200)
 }
 
 export const confirmKYCStatus = async (c: Context) => {
@@ -301,34 +298,65 @@ export const confirmKYCStatus = async (c: Context) => {
     return c.json({ error: 'User is already verified. Please login.' }, 400);
   }
 
-  // Go ahead and update user record to isKYCVerified to true
-  await User.findByIdAndUpdate(user._id, { isKycVerified: true });
+  const kycRecord = await KycRecord.findOne({ userId: user._id });
 
-  // If Kyc not verified, since shufti doesn't work right now, send access and refresh token to user to allow dashboard access
-  const secret = process.env.JWT_SECRET || 'your-secret-key';
-  const accessToken = await sign({ userId: user._id, exp: Math.floor(Date.now() / 1000) + (60 * 15) }, secret); // 15 minutes
-  const refreshToken = await sign({ userId: user._id, exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) }, secret); // 7 days
-
-
-  await RefreshToken.create({
-    userId: user._id,
-    token: refreshToken,
-    expiresAt: new Date(Date.now() + (1000 * 60 * 60 * 24 * 3)), // 3 Days
-  });
-
-  if (clientDevice === "mobile") {
-    return c.json({ accessToken, refreshToken, message: "Login & KYC verification successful" });
+  if (!kycRecord) {
+    return c.json({ error: 'KYC record not found for this user.' }, 404);
   }
 
-  setCookie(c, 'refreshToken', refreshToken, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'Strict',
-    maxAge: 60 * 60 * 24 * 3, // 3 days
-  });
+  try {
+    const verificationStatus = await getVerificationStatus(user.kycReferenceId);
 
-  return c.json({ accessToken, message: "Login & KYC verification successful" });
-}
+    kycRecord.shuftiEvent = verificationStatus.event;
+    kycRecord.shuftiVerificationResult = verificationStatus.verification_result;
+    kycRecord.reviewedAt = new Date();
+
+    if (verificationStatus.event === 'verification.accepted' && verificationStatus.verification_result === 'accepted') {
+      user.isKycVerified = true;
+      kycRecord.status = KycStatus.APPROVED;
+      await user.save();
+      await kycRecord.save();
+
+      // If Kyc is accepted, send access and refresh token to user to allow dashboard access
+      const secret = process.env.JWT_SECRET || 'your-secret-key';
+      const accessToken = await sign({ userId: user._id, exp: Math.floor(Date.now() / 1000) + (60 * 15) }, secret); // 15 minutes
+      const refreshToken = await sign({ userId: user._id, exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) }, secret); // 7 days
+
+      await RefreshToken.create({
+        userId: user._id,
+        token: refreshToken,
+        expiresAt: new Date(Date.now() + (1000 * 60 * 60 * 24 * 3)), // 3 Days
+      });
+
+      if (clientDevice === "mobile") {
+        return c.json({ accessToken, refreshToken, message: "Login & KYC verification successful" });
+      }
+
+      setCookie(c, 'refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Strict',
+        maxAge: 60 * 60 * 24 * 3, // 3 days
+      });
+
+      return c.json({ accessToken, message: "Login & KYC verification successful" });
+
+    } else if (verificationStatus.event === 'verification.declined' || verificationStatus.verification_result === 'declined') {
+      kycRecord.status = KycStatus.REJECTED;
+      kycRecord.rejectionReason = verificationStatus.declined_reason || 'Verification declined by Shufti Pro.';
+      await kycRecord.save();
+      return c.json({ error: `KYC verification declined: ${kycRecord.rejectionReason}` }, 400);
+    } else {
+      // Status is pending or other unhandled status
+      kycRecord.status = KycStatus.PENDING;
+      await kycRecord.save();
+      return c.json({ error: 'KYC verification is still pending. Please try again later.' }, 400);
+    }
+  } catch (error: any) {
+    console.error('Error confirming KYC status:', error.message);
+    return c.json({ error: 'Failed to confirm KYC status.' }, 500);
+  }
+};
 
 export const loginUser = async (c: Context) => {
   const { email, phone, password } = c.req.valid('json' as never) as z.infer<
