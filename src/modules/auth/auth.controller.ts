@@ -176,12 +176,6 @@ export const sendPhone = async (c: Context) => {
     return c.json({ error: 'Phone number is already verified' }, 400);
   }
 
-  const existingOtp = await Otp.findOne({ userId: user._id });
-
-  if (existingOtp && existingOtp.createdAt > new Date(Date.now() - 5 * 60 * 1000)) {
-    return c.json({ error: 'You must wait 5 minutes before requesting a new OTP.' }, 429);
-  }
-
   const otpCode = await generateOtp();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
@@ -351,6 +345,13 @@ export const loginUser = async (c: Context) => {
     return c.json({ error: 'Invalid credentials' }, 401);
   }
 
+
+  const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+
+  if (!passwordMatch) {
+    return c.json({ error: 'Invalid credentials' }, 401);
+  }
+
   // Check if User's Email, Phone & Identity have been verified
   if (!user.isEmailVerified || !user.isPhoneNumberVerified) {
     return c.json({
@@ -363,12 +364,6 @@ export const loginUser = async (c: Context) => {
     }, 401);
   }
 
-
-  const passwordMatch = await bcrypt.compare(password, user.passwordHash);
-
-  if (!passwordMatch) {
-    return c.json({ error: 'Invalid credentials' }, 401);
-  }
 
   const otpCode = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // OTP valid for 10 minutes
@@ -397,23 +392,12 @@ export const loginUser = async (c: Context) => {
 };
 
 export const verifyLogin = async (c: Context) => {
-  const { email, phone, otp, clientDevice } = c.req.valid('json' as never) as z.infer<
+  const { userId, otp, clientDevice } = c.req.valid('json' as never) as z.infer<
     typeof verifyOtpSchema
   >;
 
-  if (!email && !phone) {
-    return c.json({ error: 'Email or phone number is required' }, 400);
-  }
-
-  if (email && phone) {
-    return c.json({ error: 'Only one of email or phone number should be provided' }, 400);
-  }
-
   const user = await User.findOne({
-    $or: [
-      { email },
-      { phoneNumber: phone },
-    ],
+    _id: userId,
   });
 
   if (!user) {

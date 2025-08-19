@@ -40,8 +40,7 @@ export const loginUserSchema = z.object({
 });
 
 export const verifyOtpSchema = z.object({
-  email: z.email().optional(),
-  phone: z.string().optional(),
+  userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
   otp: z.string().length(6),
   clientDevice: z.enum(['web', 'mobile']),
 });

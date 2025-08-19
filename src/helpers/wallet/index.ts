@@ -79,7 +79,7 @@ export const initializeWalletSystem = async (userId: string) => {
         console.log(`LTC Wallet created for user ${userId}: ${ltcWallet.address}`);
 
         console.log(`All wallets initialized for user ${userId}`);
-    } catch (error) {
+    } catch (error: any) {
         console.error(`Error initializing wallets for user ${userId}:`, error);
         throw new Error(`Failed to initialize wallets: ${error.message}`);
     }

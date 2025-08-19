@@ -6,18 +6,30 @@ export enum AdminRole {
 }
 
 export interface IAdmin extends Document {
+  fullName:string;
+  username:string;
   email: string;
+  secondaryEmail:string;
+  phoneNumber:string;
   passwordHash: string;
   role: AdminRole;
+  isEmailVerified: boolean;
+  isPhoneNumberVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const AdminSchema: Schema = new Schema(
   {
+    fullName: { type: String, required: true },
+    username: { type: String, required: true },
     email: { type: String, required: true, unique: true },
+    phoneNumber: { type: String, required: true, unique: true },
+    secondaryEmail: { type: String, required: true, unique: true },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: Object.values(AdminRole), default: AdminRole.ADMIN },
+    isEmailVerified: { type: Boolean, default: false },
+    isPhoneNumberVerified: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
