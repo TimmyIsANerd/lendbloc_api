@@ -84,7 +84,7 @@ export const getKycStatus = async (c: Context) => {
 
 export const kycDocument = async (c: Context) => {
   const body = await c.req.parseBody({ all: true });
-  const { userId, name, dob } = c.req.valid('form' as never) as z.infer<typeof kycDocumentSchema>;
+  const { userId } = c.req.valid('form' as never) as z.infer<typeof kycDocumentSchema>;
   const proof = body['proof'] as File;
 
   if (!proof) {
@@ -100,15 +100,22 @@ export const kycDocument = async (c: Context) => {
     return c.json({ error: 'User is already KYC verified' }, 400);
   }
 
+  if (!user.dateOfBirth) {
+    return c.json({ error: 'User date of birth is required for document verification' }, 400);
+  }
+
   try {
     const imageBase64 = `data:${proof.type};base64,${arrayBufferToBase64(await proof.arrayBuffer())}`;
+
+    const dobParts = user.dateOfBirth.split('/');
+    const dobForShufti = `${dobParts[2]}-${dobParts[1]}-${dobParts[0]}`;
 
     const params: ShuftiVerifyParams = {
       type: ShuftiType.DOCUMENT,
       reference: user.kycReferenceId,
       imageBase64,
-      name,
-      dob,
+      name: user.fullName,
+      dob: dobForShufti,
     };
 
     const response = await shuftiPro.verify(params);

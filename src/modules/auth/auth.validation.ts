@@ -26,8 +26,6 @@ export const verifyPhoneSchema = z.object({
 
 export const kycDocumentSchema = z.object({
   userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
-  name: z.string(),
-  dob: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
 });
 
 export const kycFaceSchema = z.object({
