@@ -56,7 +56,7 @@ export interface ShuftiConfig {
     clientId: string;
     secretKey: string;
     baseUrl?: string;        // default: https://api.shuftipro.com
-    timeoutMs: 60_000 // 60 seconds
+    timeoutMs: number // default: 30_000
     defaultCallbackUrl?: string;
 }
 
@@ -114,12 +114,6 @@ class ShuftiPro {
 
         try {
             const { data } = await this.axios.post<ShuftiResponse>("/", requestBody);
-
-            if (data?.event === "verification.declined") {
-                const reason = data.declined_reason || data?.error?.message || "Verification declined";
-                throw new Error(reason);
-            }
-
             return data;
         } catch (err) {
             throw this.normalizeError(err);
@@ -161,7 +155,7 @@ class ShuftiPro {
 const shuftiPro = new ShuftiPro({
     clientId: process.env.SHUFTI_PRO_CLIENT_ID!,
     secretKey: process.env.SHUFTI_PRO_CLIENT_SECRET!,
-    timeoutMs: 60_000 // 60 seconds
+    timeoutMs: 30_000 // 30 seconds
 });
 
 export default shuftiPro;

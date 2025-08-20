@@ -4,6 +4,7 @@ export enum KycStatus {
   PENDING = 'pending',
   APPROVED = 'approved',
   REJECTED = 'rejected',
+  FAILED = 'failed',
 }
 
 export interface IKycRecord extends Document {

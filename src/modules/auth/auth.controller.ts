@@ -52,22 +52,23 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
   return btoa(binary);
 };
 
-const checkKycStatus = async (userId: string) => {
-  const kycRecord = await KycRecord.findOne({ userId });
-  if (kycRecord && kycRecord.shuftiVerificationResult) {
-    const { document, face, consent, background_checks } = kycRecord.shuftiVerificationResult;
-    if (document?.event === 'verification.accepted' &&
-      face?.event === 'verification.accepted' &&
-      consent?.event === 'verification.accepted' &&
-      background_checks?.event === 'verification.accepted') {
-      await User.findByIdAndUpdate(userId, { isKycVerified: true });
-      kycRecord.status = KycStatus.APPROVED;
-      await kycRecord.save();
-      return true;
+const
+  checkKycStatus = async (userId: string) => {
+    const kycRecord = await KycRecord.findOne({ userId });
+    if (kycRecord && kycRecord.shuftiVerificationResult) {
+      const { document, face, consent, background_checks } = kycRecord.shuftiVerificationResult;
+      if (document?.event === 'verification.accepted' &&
+        face?.event === 'verification.accepted' &&
+        consent?.event === 'verification.accepted' &&
+        background_checks?.event === 'verification.accepted') {
+        await User.findByIdAndUpdate(userId, { isKycVerified: true });
+        kycRecord.status = KycStatus.APPROVED;
+        await kycRecord.save();
+        return true;
+      }
     }
-  }
-  return false;
-};
+    return false;
+  };
 
 export const getKycStatus = async (c: Context) => {
   const { userId } = c.req.valid('query' as never) as z.infer<typeof getKycStatusSchema>;
@@ -82,6 +83,8 @@ export const getKycStatus = async (c: Context) => {
   if (kycRecord.shuftiReferenceId) {
     try {
       const shuftiStatus = await shuftiPro.getStatus(kycRecord.shuftiReferenceId);
+
+      console.log('Shufti Pro Status:', shuftiStatus);
 
       // Update kycRecord with the latest status from Shufti Pro
       kycRecord.shuftiVerificationResult = shuftiStatus;
@@ -222,8 +225,14 @@ export const submitKyc = async (c: Context) => {
   const { userId } = c.req.valid('json' as never) as z.infer<typeof submitKycSchema>;
 
   const user = await User.findById(userId);
+
   if (!user) {
     return c.json({ error: 'User not found' }, 404);
+  }
+
+  // Check if User isn't already verified
+  if (user.isKycVerified) {
+    return c.json({ error: 'User is already verified' }, 400);
   }
 
   const kycRecord = await KycRecord.findOne({ userId });
@@ -233,6 +242,9 @@ export const submitKyc = async (c: Context) => {
 
   try {
     const shuftiReferenceId = shuftiPro.generateReference();
+
+    // Set shuftiReferenceId into kycRecord
+    kycRecord.shuftiReferenceId = shuftiReferenceId;
 
     const dobParts = kycRecord.documentDob!.split('/');
     const dobForShufti = `${dobParts[2]}-${dobParts[1]}-${dobParts[0]}`;
@@ -264,22 +276,26 @@ export const submitKyc = async (c: Context) => {
       },
     };
 
-    const response = await shuftiPro.verify(payload);
+    try {
+      const response = await shuftiPro.verify(payload);
 
-      // Only set shuftiReferenceId if verification call was successful
-      kycRecord.shuftiReferenceId = shuftiReferenceId;
-    kycRecord.shuftiEvent = response.event;
-    kycRecord.shuftiVerificationResult = response;
-    if (response.event === 'verification.declined') {
-      kycRecord.status = KycStatus.REJECTED;
-      kycRecord.rejectionReason = response.declined_reason;
-    } else {
-      kycRecord.status = KycStatus.PENDING; // Or whatever status shufti returns initially
+      kycRecord.shuftiEvent = response.event;
+      kycRecord.shuftiVerificationResult = response;
+      if (response.event === 'verification.declined') {
+        kycRecord.status = KycStatus.REJECTED;
+        kycRecord.rejectionReason = response.declined_reason;
+      } else {
+        kycRecord.status = KycStatus.PENDING;
+      }
+      await kycRecord.save();
+
+      return c.json({ message: 'KYC submission successful', data: response });
+    } catch (error: any) {
+      kycRecord.status = KycStatus.FAILED;
+      kycRecord.rejectionReason = error.message;
+      await kycRecord.save();
+      return c.json({ message: 'KYC submission successful', data: { message: 'timeout' } });
     }
-    await kycRecord.save();
-
-    return c.json({ message: 'KYC submission successful', data: response });
-
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
   }
