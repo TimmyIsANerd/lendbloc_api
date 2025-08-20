@@ -44,7 +44,10 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
   const bytes = new Uint8Array(buffer);
   const len = bytes.byteLength;
   for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
+    const byte = bytes[i];
+    if (byte !== undefined) {
+      binary += String.fromCharCode(byte);
+    }
   }
   return btoa(binary);
 };
@@ -236,8 +239,8 @@ export const submitKyc = async (c: Context) => {
       },
       background_checks: {
         name: {
-          first_name: firstName,
-          last_name: lastName,
+          first_name: firstName || '',
+          last_name: lastName || '',
         },
         dob: dobForShufti,
       },
