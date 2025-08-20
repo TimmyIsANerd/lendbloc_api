@@ -56,7 +56,7 @@ export interface ShuftiConfig {
     clientId: string;
     secretKey: string;
     baseUrl?: string;        // default: https://api.shuftipro.com
-    timeoutMs?: number;      // default: 30_000
+    timeoutMs: 60_000 // 60 seconds
     defaultCallbackUrl?: string;
 }
 
@@ -120,6 +120,19 @@ class ShuftiPro {
                 throw new Error(reason);
             }
 
+            return data;
+        } catch (err) {
+            throw this.normalizeError(err);
+        }
+    }
+
+    async getStatus(reference: string): Promise<ShuftiResponse> {
+        const requestBody = {
+            reference: reference,
+        };
+
+        try {
+            const { data } = await this.axios.post<ShuftiResponse>("/status", requestBody);
             return data;
         } catch (err) {
             throw this.normalizeError(err);

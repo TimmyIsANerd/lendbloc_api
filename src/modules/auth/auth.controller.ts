@@ -72,10 +72,35 @@ const checkKycStatus = async (userId: string) => {
 export const getKycStatus = async (c: Context) => {
   const { userId } = c.req.valid('query' as never) as z.infer<typeof getKycStatusSchema>;
 
-  const kycRecord = await KycRecord.findOne({ userId }).select('status shuftiVerificationResult');
+  let kycRecord = await KycRecord.findOne({ userId }).select('status shuftiVerificationResult shuftiReferenceId');
 
   if (!kycRecord) {
     return c.json({ status: 'not_started', message: 'KYC verification has not been initiated.' });
+  }
+
+  // If a Shufti Pro reference ID exists, fetch the latest status
+  if (kycRecord.shuftiReferenceId) {
+    try {
+      const shuftiStatus = await shuftiPro.getStatus(kycRecord.shuftiReferenceId);
+
+      // Update kycRecord with the latest status from Shufti Pro
+      kycRecord.shuftiVerificationResult = shuftiStatus;
+      if (shuftiStatus.event === 'verification.declined') {
+        kycRecord.status = KycStatus.REJECTED;
+        kycRecord.rejectionReason = shuftiStatus.declined_reason;
+      } else if (shuftiStatus.event === 'verification.accepted') {
+        kycRecord.status = KycStatus.APPROVED;
+        // Also update user's isKycVerified status if fully accepted
+        await User.findByIdAndUpdate(userId, { isKycVerified: true });
+      } else {
+        kycRecord.status = KycStatus.PENDING; // Or other relevant status from Shufti Pro
+      }
+      await kycRecord.save();
+
+    } catch (error: any) {
+      console.error('Error fetching Shufti Pro status:', error);
+      // Optionally, handle the error more gracefully, e.g., return a specific error status
+    }
   }
 
   return c.json({
@@ -220,7 +245,7 @@ export const submitKyc = async (c: Context) => {
       reference: shuftiReferenceId,
       document: {
         proof: kycRecord.documentProof,
-        name: [firstName, lastName].filter(Boolean),
+        name: [firstName, lastName].filter((n): n is string => Boolean(n)),
         dob: dobForShufti,
       },
       face: {
@@ -241,7 +266,8 @@ export const submitKyc = async (c: Context) => {
 
     const response = await shuftiPro.verify(payload);
 
-    kycRecord.shuftiReferenceId = shuftiReferenceId;
+      // Only set shuftiReferenceId if verification call was successful
+      kycRecord.shuftiReferenceId = shuftiReferenceId;
     kycRecord.shuftiEvent = response.event;
     kycRecord.shuftiVerificationResult = response;
     if (response.event === 'verification.declined') {
