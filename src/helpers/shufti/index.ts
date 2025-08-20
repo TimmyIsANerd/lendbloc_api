@@ -21,7 +21,7 @@ export type AddressProof = {
 
 export type ConsentProof = {
     proof: string; // base64
-    text?: string;
+    text: string;
     supported_types?: Array<"handwritten" | "printed">;
 };
 

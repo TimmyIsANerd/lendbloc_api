@@ -228,7 +228,7 @@ export const submitKyc = async (c: Context) => {
       },
       consent: {
         proof: kycRecord.consentProof,
-        text: kycRecord.consentText,
+        text: `${kycRecord.documentName!} ${kycRecord.documentDob!}`,
       },
       background_checks: {
         name: {
