@@ -144,6 +144,13 @@ export const kycFace = async (c: Context) => {
 export const kycAddress = async (c: Context) => {
   const { userId, fullAddress } = c.req.valid('json' as never) as z.infer<typeof kycAddressSchema>;
 
+  // Check if User isn't verified yet, if verified don't allow to update address
+  const user: IUser | null = await User.findById(userId);
+
+  if (user?.isKycVerified) {
+    return c.json({ error: 'User is already verified' }, 400);
+  }
+
   try {
     await KycRecord.findOneAndUpdate(
       { userId },
@@ -213,14 +220,11 @@ export const submitKyc = async (c: Context) => {
       reference: shuftiReferenceId,
       document: {
         proof: kycRecord.documentProof,
-        name: kycRecord.documentName!,
+        name: [firstName, lastName].filter(Boolean),
         dob: dobForShufti,
       },
       face: {
         proof: kycRecord.faceProof,
-      },
-      address: {
-        full_address: kycRecord.fullAddress!,
       },
       consent: {
         proof: kycRecord.consentProof,
