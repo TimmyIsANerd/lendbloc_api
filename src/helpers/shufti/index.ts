@@ -97,7 +97,6 @@ class ShuftiPro {
     }
     if (payload.address) {
         requestBody.address = {
-            proof: payload.address.proof,
             full_address: payload.address.full_address,
             supported_types: payload.address.supported_types ?? ["id_card", "bank_statement", "driving_license", "utility_bill"],
         };

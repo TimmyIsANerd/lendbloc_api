@@ -84,7 +84,7 @@ auth.post('/edit-phone', zValidator('json', editPhoneNumberSchema), editPhoneNum
 // KYC
 auth.post('/kyc/document', zValidator('form', kycDocumentSchema), kycDocument);
 auth.post('/kyc/face', zValidator('form', kycFaceSchema), kycFace);
-auth.post('/kyc/address', zValidator('form', kycAddressSchema), kycAddress);
+auth.post('/kyc/address', zValidator('json', kycAddressSchema), kycAddress);
 auth.post('/kyc/consent', zValidator('form', kycConsentSchema), kycConsent);
 auth.post('/kyc/submit', zValidator('json', submitKycSchema), submitKyc);
 auth.get('/kyc/status', zValidator('query', getKycStatusSchema), getKycStatus);

@@ -19,7 +19,6 @@ export interface IKycRecord extends Document {
   reviewedBy?: mongoose.Types.ObjectId;
   documentProof?: string;
   faceProof?: string;
-  addressProof?: string;
   consentProof?: string;
   documentName?: string;
   documentDob?: string;
@@ -41,7 +40,6 @@ const KycRecordSchema: Schema = new Schema(
     reviewedBy: { type: Schema.Types.ObjectId, ref: 'Admin' },
     documentProof: { type: String },
     faceProof: { type: String },
-    addressProof: { type: String },
     consentProof: { type: String },
     documentName: { type: String },
     documentDob: { type: String },

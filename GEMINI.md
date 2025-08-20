@@ -83,7 +83,7 @@ This section will be updated after each task to track the progress of the projec
 ### `users` module
 - [x] User Profile Management (`/users/profile`)
 - [x] User Email Change
-- [x] KYC Verification (Address, ID, Facial Recognition) and Callback Handling
+- [x] KYC Verification (Address - plain text, ID, Facial Recognition) and Callback Handling
 
 ### `wallets` module
 - [x] Wallet Management (`/wallets`)

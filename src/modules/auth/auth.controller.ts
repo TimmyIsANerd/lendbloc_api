@@ -55,10 +55,9 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
 const checkKycStatus = async (userId: string) => {
   const kycRecord = await KycRecord.findOne({ userId });
   if (kycRecord && kycRecord.shuftiVerificationResult) {
-    const { document, face, address, consent, background_checks } = kycRecord.shuftiVerificationResult;
+    const { document, face, consent, background_checks } = kycRecord.shuftiVerificationResult;
     if (document?.event === 'verification.accepted' &&
       face?.event === 'verification.accepted' &&
-      address?.event === 'verification.accepted' &&
       consent?.event === 'verification.accepted' &&
       background_checks?.event === 'verification.accepted') {
       await User.findByIdAndUpdate(userId, { isKycVerified: true });
@@ -143,27 +142,18 @@ export const kycFace = async (c: Context) => {
 };
 
 export const kycAddress = async (c: Context) => {
-  const body = await c.req.parseBody({ all: true });
-  const { userId, fullAddress } = c.req.valid('form' as never) as z.infer<typeof kycAddressSchema>;
-  const proof = body['proof'] as File;
-
-  if (!proof) {
-    return c.json({ error: 'Address proof is required' }, 400);
-  }
+  const { userId, fullAddress } = c.req.valid('json' as never) as z.infer<typeof kycAddressSchema>;
 
   try {
-    const imageBase64 = `data:${proof.type};base64,${arrayBufferToBase64(await proof.arrayBuffer())}`;
-
     await KycRecord.findOneAndUpdate(
       { userId },
       {
-        addressProof: imageBase64,
         fullAddress: fullAddress,
       },
       { upsert: true, new: true }
     );
 
-    return c.json({ message: 'Address proof uploaded successfully' });
+    return c.json({ message: 'Address saved successfully' });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
   }
@@ -205,7 +195,7 @@ export const submitKyc = async (c: Context) => {
   }
 
   const kycRecord = await KycRecord.findOne({ userId });
-  if (!kycRecord || !kycRecord.documentProof || !kycRecord.faceProof || !kycRecord.addressProof || !kycRecord.consentProof) {
+  if (!kycRecord || !kycRecord.documentProof || !kycRecord.faceProof || !kycRecord.consentProof) {
     return c.json({ error: 'All KYC proofs must be uploaded before submission' }, 400);
   }
 
@@ -230,7 +220,6 @@ export const submitKyc = async (c: Context) => {
         proof: kycRecord.faceProof,
       },
       address: {
-        proof: kycRecord.addressProof,
         full_address: kycRecord.fullAddress!,
       },
       consent: {
