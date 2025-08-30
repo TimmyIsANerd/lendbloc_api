@@ -84,3 +84,71 @@ export const initializeWalletSystem = async (userId: string) => {
         throw new Error(`Failed to initialize wallets: ${error.message}`);
     }
 };
+
+
+export const initializeLiquidityWalletSystem = async (adminId: string) => {
+    try {
+        // Generate TRON Wallet
+        const tronWallet = await generateTronWallet();
+        const encryptedTronMnemonic = encryptMnemonic(tronWallet.mnemonic);
+        const tronAsset = await Asset.findOneAndUpdate(
+            { symbol: 'TRX', name: 'Tron' },
+            { $setOnInsert: { symbol: 'TRX', name: 'Tron', type: 'crypto' } },
+            { upsert: true, new: true }
+        );
+        await Wallet.create({
+            userId: adminId,
+            assetId: tronAsset._id,
+            address: tronWallet.address,
+            encryptedMnemonic: encryptedTronMnemonic,
+            network: 'TRON',
+            balance: 0,
+            isLiquidityWallet: true
+        });
+        console.log(`TRON Liquidity Wallet created for admin ${adminId}: ${tronWallet.address}`);
+
+        // Generate BTC Wallet
+        const btcWallet = await generateBtcWallet();
+        const encryptedBtcMnemonic = encryptMnemonic(btcWallet.mnemonic);
+        const btcAsset = await Asset.findOneAndUpdate(
+            { symbol: 'BTC', name: 'Bitcoin' },
+            { $setOnInsert: { symbol: 'BTC', name: 'Bitcoin', type: 'crypto' } },
+            { upsert: true, new: true }
+        );
+        await Wallet.create({
+            userId: adminId,
+            assetId: btcAsset._id,
+            address: btcWallet.address,
+            encryptedMnemonic: encryptedBtcMnemonic,
+            network: 'BTC',
+            balance: 0,
+            isLiquidityWallet: true
+        });
+        console.log(`BTC Liquidity Wallet created for admin ${adminId}: ${btcWallet.address}`);
+
+        // Generate LTC Wallet
+        const ltcWallet = await generateLTCWallet();
+        const encryptedLtcMnemonic = encryptMnemonic(ltcWallet.mnemonic);
+        const ltcAsset = await Asset.findOneAndUpdate(
+            { symbol: 'LTC', name: 'Litecoin' },
+            { $setOnInsert: { symbol: 'LTC', name: 'Litecoin', type: 'crypto' } },
+            { upsert: true, new: true }
+        );
+        await Wallet.create({
+            userId: adminId,
+            assetId: ltcAsset._id,
+            address: ltcWallet.address,
+            encryptedMnemonic: encryptedLtcMnemonic,
+            network: 'LTC',
+            balance: 0,
+            isLiquidityWallet: true
+        });
+        console.log(`LTC Liquidity Wallet created for admin ${adminId}: ${ltcWallet.address}`);
+
+        console.log(`All liquidity wallets initialized for admin ${adminId}`);
+        return true;
+    } catch (error: any) {
+        console.error(`Error initializing liquidity wallets for admin ${adminId}:`, error);
+        throw new Error(`Failed to initialize liquidity wallets: ${error.message}`);
+    }
+};
