@@ -2,6 +2,8 @@ import { TatumSDK, Network, type Tron, type Bitcoin, type Litecoin } from '@tatu
 import { TronWalletProvider } from '@tatumio/tron-wallet-provider';
 import { UtxoWalletProvider } from '@tatumio/utxo-wallet-provider';
 
+const TEST_ENV: boolean = process.env.CURRENT_ENVIRONMENT === "DEVELOPMENT";
+
 
 /**
  * Generates a new TRON wallet with mnemonic, private key, and address
@@ -58,7 +60,7 @@ export const generateTronWallet = async () => {
  */
 export const generateBtcWallet = async () => {
     const tatum = await TatumSDK.init<Bitcoin>({
-        network: Network.BITCOIN,
+        network: TEST_ENV ? Network.BITCOIN_TESTNET_4 : Network.BITCOIN,
         configureWalletProviders: [UtxoWalletProvider],
     });
 
@@ -97,7 +99,7 @@ export const generateBtcWallet = async () => {
  */
 export const generateLTCWallet = async () => {
     const tatum = await TatumSDK.init<Litecoin>({
-        network: Network.LITECOIN,
+        network: TEST_ENV ? Network.LITECOIN_TESTNET : Network.LITECOIN,
         configureWalletProviders: [UtxoWalletProvider],
     });
 
