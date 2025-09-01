@@ -10,6 +10,7 @@ import savings from './src/modules/savings/savings.routes';
 import exchange from './src/modules/exchange/exchange.routes';
 import notifications from './src/modules/notifications/notifications.routes';
 import admin from './src/modules/admin/admin.routes';
+import { adminRouter } from './src/modules/admin/admin.routes';
 import webhooks from './src/modules/webhooks/webhooks.routes';
 import referrals from './src/modules/referrals/referral.routes';
 import calculator from './src/modules/calculator/calculator.routes';
@@ -47,6 +48,7 @@ app.route('/api/v1/lending', lending);
 app.route('/api/v1/savings', savings);
 app.route('/api/v1/exchange', exchange);
 app.route('/api/v1/notifications', notifications);
+app.route('/api/v1/admin/auth', adminRouter); // Admin Auth
 app.route('/api/v1/admin', admin);
 app.route('/api/v1/webhooks', webhooks);
 app.route('/api/v1/referrals', referrals);
