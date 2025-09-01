@@ -1,4 +1,4 @@
-import { createPublicClient, createWalletClient, http, parseEther, formatEther } from 'viem';
+import { createPublicClient, createWalletClient, http, parseEther, formatEther, parseUnits } from 'viem';
 import { mnemonicToAccount } from 'viem/accounts';
 import { mainnet, sepolia, polygon, polygonAmoy, bsc, bscTestnet } from 'viem/chains';
 import Wallet from '../../models/Wallet';
@@ -6,6 +6,7 @@ import { decryptMnemonic } from '../../helpers/wallet/security';
 import { TatumSDK, Network, Tron, Bitcoin, Litecoin } from '@tatumio/tatum';
 import { TronWalletProvider } from '@tatumio/tron-wallet-provider';
 import { UtxoWalletProvider } from '@tatumio/utxo-wallet-provider';
+import { ERC20_MIN_ABI } from '../../helpers/evm/erc20';
 
 const TEST_ENV: boolean = process.env.CURRENT_ENVIRONMENT === 'DEVELOPMENT';
 
@@ -98,7 +99,15 @@ const getRpcTransport = (network: string, chain: any) => {
  * @param amountReceived The amount of the asset received by the user's wallet.
  * @returns A promise that resolves when the funds have been relocated or an error occurs.
  */
-export async function relocateFundsToLiquidityWallet(userWalletId: string, amountReceived: number) {
+type RelocateKind = 'native' | 'erc20' | 'trc20';
+interface RelocateOptions {
+    amount: number;
+    kind?: RelocateKind;
+    tokenAddress?: string;
+    decimals?: number;
+}
+
+export async function relocateFundsToLiquidityWallet(userWalletId: string, amountOrOptions: number | RelocateOptions) {
     try {
         const userWallet = await Wallet.findById(userWalletId);
         if (!userWallet) {
@@ -108,7 +117,7 @@ export async function relocateFundsToLiquidityWallet(userWalletId: string, amoun
         // Find the corresponding liquidity wallet for the same asset and network
         const liquidityWallet = await Wallet.findOne({
             assetId: userWallet.assetId,
-            network: userWallet.network, // Match network exactly (e.g., 'ETH_MAINNET' to 'ETH_MAINNET')
+            network: userWallet.network, // Match network exactly (e.g., 'ETH' to 'ETH')
             isLiquidityWallet: true,
         });
 
@@ -116,21 +125,37 @@ export async function relocateFundsToLiquidityWallet(userWalletId: string, amoun
             throw new Error(`Liquidity wallet for asset ${userWallet.assetId} and network ${userWallet.network} not found.`);
         }
 
-const userMnemonic = decryptMnemonic(userWallet.encryptedMnemonic);
-const liquidityWalletAddress = liquidityWallet.address;
+        const userMnemonic = decryptMnemonic(userWallet.encryptedMnemonic);
+        const liquidityWalletAddress = liquidityWallet.address;
 
-        console.log(`Attempting to relocate ${amountReceived} ${userWallet.network} from user wallet ${userWallet.address} to liquidity wallet ${liquidityWalletAddress}`);
+        const opts: RelocateOptions = typeof amountOrOptions === 'number'
+            ? { amount: amountOrOptions, kind: 'native' }
+            : { kind: 'native', ...amountOrOptions };
+
+        const { amount, kind = 'native', tokenAddress, decimals } = opts;
+
+        console.log(`Attempting to relocate ${amount} (${kind}) on ${userWallet.network} from user wallet ${userWallet.address} to liquidity wallet ${liquidityWalletAddress}`);
 
         // Determine if it's an EVM chain based on common prefixes
         const isEvmChain = userWallet.network.startsWith('ETH') || userWallet.network.startsWith('BSC') || userWallet.network.startsWith('MATIC');
 
-if (isEvmChain) {
-            await handleEvmRelocation(userWallet, userMnemonic, liquidityWalletAddress, amountReceived);
+        if (isEvmChain) {
+            if (kind === 'erc20') {
+                if (!tokenAddress) throw new Error('Missing tokenAddress for ERC-20 relocation.');
+                await handleEvmErc20Relocation(userWallet, userMnemonic, liquidityWalletAddress, amount, tokenAddress, decimals);
+            } else {
+                await handleEvmRelocation(userWallet, userMnemonic, liquidityWalletAddress, amount);
+            }
         } else if (userWallet.network.startsWith('TRON')) {
-            await handleTronRelocation(userWallet, userMnemonic, liquidityWalletAddress, amountReceived);
+            if (kind === 'trc20') {
+                if (!tokenAddress) throw new Error('Missing tokenAddress for TRC-20 relocation.');
+                await handleTronTrc20Relocation(userWallet, userMnemonic, liquidityWalletAddress, amount, tokenAddress, decimals);
+            } else {
+                await handleTronRelocation(userWallet, userMnemonic, liquidityWalletAddress, amount);
+            }
         } else if (userWallet.network.startsWith('BTC') || userWallet.network.startsWith('LTC')) {
             const coin = userWallet.network.startsWith('BTC') ? 'BTC' : 'LTC';
-            await handleUtxoRelocation(userWallet, userMnemonic, liquidityWalletAddress, amountReceived, coin);
+            await handleUtxoRelocation(userWallet, userMnemonic, liquidityWalletAddress, amount, coin);
         } else {
             throw new Error(`Unsupported network for fund relocation: ${userWallet.network}`);
         }
@@ -220,7 +245,61 @@ async function handleEvmRelocation(userWallet: any, userMnemonic: string, liquid
     });
     console.log(`EVM: Asset transfer TX: ${transferTxHash}`);
     await publicClient.waitForTransactionReceipt({ hash: transferTxHash });
-    console.log('EVM: Asset transfer confirmed.');
+console.log('EVM: Asset transfer confirmed.');
+}
+
+// --- EVM ERC-20 Relocation Handler ---
+async function handleEvmErc20Relocation(userWallet: any, userMnemonic: string, liquidityWalletAddress: string, amountReceived: number, tokenAddress: string, decimals?: number) {
+    const chain = getViemChain(userWallet.network);
+    const publicClient = createPublicClient({
+        chain,
+        transport: getRpcTransport(userWallet.network, chain),
+    });
+    const userAccount = mnemonicToAccount(userMnemonic);
+    const walletClient = createWalletClient({
+        account: userAccount,
+        chain,
+        transport: getRpcTransport(userWallet.network, chain),
+    });
+
+    // Estimate gas for ERC-20 transfer
+    const tokenAmount = parseUnits(amountReceived.toString(), BigInt(decimals ?? 18));
+    const gasPrice = await publicClient.getGasPrice();
+    const estimatedGas = await publicClient.estimateContractGas({
+        account: userAccount,
+        address: tokenAddress as `0x${string}`,
+        abi: ERC20_MIN_ABI as any,
+        functionName: 'transfer',
+        args: [liquidityWalletAddress as `0x${string}`, tokenAmount],
+    });
+    const gasCostWei = estimatedGas * gasPrice;
+
+    // Ensure user has enough native gas
+    const userBalanceWei = await publicClient.getBalance({ address: userAccount.address });
+    if (userBalanceWei < gasCostWei) {
+        const liquidityWalletDb = await Wallet.findOne({ address: liquidityWalletAddress, isLiquidityWallet: true });
+        if (!liquidityWalletDb || !liquidityWalletDb.encryptedMnemonic) throw new Error('Liquidity wallet mnemonic not found for ERC-20 gas transfer.');
+        const liquidityMnemonic = decryptMnemonic(liquidityWalletDb.encryptedMnemonic);
+        const liquidityAccount = mnemonicToAccount(liquidityMnemonic);
+        const liquidityWalletClient = createWalletClient({ account: liquidityAccount, chain, transport: getRpcTransport(userWallet.network, chain) });
+        const shortfallWei = gasCostWei - userBalanceWei + parseEther('0.0001');
+        if (shortfallWei > 0n) {
+            const gasTx = await liquidityWalletClient.sendTransaction({ account: liquidityAccount, to: userAccount.address, value: shortfallWei });
+            await publicClient.waitForTransactionReceipt({ hash: gasTx });
+        }
+    }
+
+    // Execute ERC-20 transfer
+    const transferHash = await walletClient.writeContract({
+        account: userAccount,
+        address: tokenAddress as `0x${string}`,
+        abi: ERC20_MIN_ABI as any,
+        functionName: 'transfer',
+        args: [liquidityWalletAddress as `0x${string}`, tokenAmount],
+    });
+    console.log(`EVM ERC-20: Asset transfer TX: ${transferHash}`);
+    await publicClient.waitForTransactionReceipt({ hash: transferHash });
+    console.log('EVM ERC-20: Asset transfer confirmed.');
 }
 
 // --- TRON Relocation Handler ---
@@ -283,7 +362,52 @@ async function handleTronRelocation(userWallet: any, userMnemonic: string, liqui
     console.log(`TRON: Asset transfer TX: ${transferTx.txId}`);
 
     await tatum.destroy();
-    console.log('TRON: Relocation logic completed.');
+console.log('TRON: Relocation logic completed.');
+}
+
+// --- TRON TRC-20 Relocation Handler ---
+async function handleTronTrc20Relocation(userWallet: any, userMnemonic: string, liquidityWalletAddress: string, amountReceived: number, tokenAddress: string, decimals?: number) {
+    const tatumNetwork = getTatumNetwork(userWallet.network);
+    const tatum = await TatumSDK.init<Tron>({
+        network: tatumNetwork,
+        configureWalletProviders: [TronWalletProvider],
+    });
+    const tronWalletProvider = tatum.walletProvider.use(TronWalletProvider);
+
+    // Derive user's private key from mnemonic
+    const userPrivateKey = await tronWalletProvider.generatePrivateKeyFromMnemonic(userMnemonic, 0);
+
+    // TRC-20 transfers require more energy than native transfers
+    const estimatedTrxCost = 5; // heuristic buffer
+
+    // Check TRX balance for energy
+    const userTrxBalanceResponse = await tatum.blockchain.tron.getAccountBalance(userWallet.address);
+    const userTrxBalance = parseFloat(userTrxBalanceResponse.balance);
+
+    if (userTrxBalance < estimatedTrxCost) {
+        const liquidityWalletDb = await Wallet.findOne({ address: liquidityWalletAddress, isLiquidityWallet: true });
+        if (!liquidityWalletDb || !liquidityWalletDb.encryptedMnemonic) {
+            throw new Error('Liquidity wallet mnemonic not found for TRON gas transfer.');
+        }
+        const liquidityMnemonic = decryptMnemonic(liquidityWalletDb.encryptedMnemonic);
+        const liquidityPrivateKey = await tronWalletProvider.generatePrivateKeyFromMnemonic(liquidityMnemonic, 0);
+        const topUp = estimatedTrxCost - userTrxBalance + 1;
+        if (topUp > 0) {
+            await tronWalletProvider.sendTrx({ fromPrivateKey: liquidityPrivateKey, to: userWallet.address, amount: topUp.toString() });
+        }
+    }
+
+    // Send TRC-20
+    const transferTx = await tronWalletProvider.sendTrc20({
+        fromPrivateKey: userPrivateKey,
+        to: liquidityWalletAddress,
+        tokenAddress,
+        amount: amountReceived.toString(),
+    });
+    console.log(`TRON TRC-20: Asset transfer TX: ${transferTx.txId}`);
+
+    await tatum.destroy();
+    console.log('TRON TRC-20: Relocation logic completed.');
 }
 
 // --- UTXO (BTC/LTC) Relocation Handler ---
