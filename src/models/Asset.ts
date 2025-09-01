@@ -10,6 +10,11 @@ export interface IAsset extends Document {
   amountHeld: number;
   isLendable: boolean;
   isCollateral: boolean;
+  // New optional fields for tokenized assets
+  network?: string; // 'ETH' | 'BSC' | 'TRON' | 'MATIC' | 'BTC' | 'LTC'
+  kind?: 'native' | 'erc20' | 'trc20';
+  tokenAddress?: string;
+  decimals?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,6 +30,10 @@ const AssetSchema: Schema = new Schema(
     amountHeld: { type: Number, required: true },
     isLendable: { type: Boolean, default: true },
     isCollateral: { type: Boolean, default: true },
+    network: { type: String },
+    kind: { type: String, enum: ['native', 'erc20', 'trc20'], default: 'native' },
+    tokenAddress: { type: String },
+    decimals: { type: Number },
   },
   { timestamps: true }
 );
