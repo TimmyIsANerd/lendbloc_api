@@ -21,7 +21,7 @@ const TEST_ENV: boolean = process.env.CURRENT_ENVIRONMENT === "DEVELOPMENT";
 
 export const generateTronWallet = async () => {
     const tatum = await TatumSDK.init<Tron>({
-        network: Network.TRON,
+        network: TEST_ENV ? Network.TRON_SHASTA : Network.TRON,
         configureWalletProviders: [TronWalletProvider],
     });
 
@@ -60,7 +60,7 @@ export const generateTronWallet = async () => {
  */
 export const generateBtcWallet = async () => {
     const tatum = await TatumSDK.init<Bitcoin>({
-        network: TEST_ENV ? Network.BITCOIN_TESTNET_4 : Network.BITCOIN,
+        network: TEST_ENV ? Network.BITCOIN_TESTNET : Network.BITCOIN,
         configureWalletProviders: [UtxoWalletProvider],
     });
 
