@@ -16,6 +16,7 @@ import referrals from './src/modules/referrals/referral.routes';
 import calculator from './src/modules/calculator/calculator.routes';
 import prices from './src/modules/prices/prices.routes';
 import dashboard from './src/modules/dashboard/dashboard.routes';
+import { adminChat } from './src/modules/adminChat/chat.routes';
 import connectDB from './src/config/db';
 
 connectDB();
@@ -50,6 +51,7 @@ app.route('/api/v1/exchange', exchange);
 app.route('/api/v1/notifications', notifications);
 app.route('/api/v1/admin/auth', adminRouter); // Admin Auth
 app.route('/api/v1/admin', admin);
+app.route('/api/v1/admin/chat', adminChat);
 app.route('/api/v1/webhooks', webhooks);
 app.route('/api/v1/referrals', referrals);
 app.route('/api/v1/calculator', calculator);
