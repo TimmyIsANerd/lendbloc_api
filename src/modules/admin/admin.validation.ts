@@ -34,3 +34,14 @@ export const adminVerifyLoginSchema = z.object({
 export const adminLogoutSchema = z.object({
     refreshToken: z.string(),
 })
+
+export const adminRefreshTokenSchema = z.object({
+    refreshToken: z.string(),
+})
+
+export const adminBlockUserSchema = z.object({
+    email: z.string().email().optional(),
+    phone: z.string().optional(),
+}).refine((data) => !!data.email || !!data.phone, {
+    message: 'Either email or phone is required',
+});

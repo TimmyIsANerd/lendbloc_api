@@ -1,5 +1,5 @@
 import { type Context } from 'hono';
-import User from '../../models/User';
+import User, { AccountStatus } from '../../models/User';
 import Loan from '../../models/Loan';
 import SavingsAccount from '../../models/SavingsAccount';
 import Transaction from '../../models/Transaction';
@@ -18,7 +18,8 @@ import {
   adminLoginSchema,
   adminVerifyLoginSchema,
   adminLogoutSchema,
-  adminRefreshTokenSchema
+  adminRefreshTokenSchema,
+  adminBlockUserSchema
 } from './admin.validation';
 import { sendSms } from '../../helpers/twilio';
 import { sendEmail } from '../../helpers/email';
@@ -115,7 +116,7 @@ export const adminSendPhoneOtp = async (c: Context) => {
 
     await sendSms(phone, `Your LendBloc verification code is: ${otp}`);
 
-    return c.json({ message: 'OTP sent successfully' });
+    return c.json({ message: 'OTP sent successfully', userId: admin._id });
   } catch (error) {
     console.error('Error sending phone OTP:', error);
     return c.json({ error: 'An unexpected error occurred' }, 500);
@@ -350,6 +351,32 @@ export const deleteAdminAvatar = async (c: Context) => {
     return c.json({ message: 'Avatar removed successfully' });
   } catch (error) {
     console.error('Error deleting admin avatar:', error);
+    return c.json({ error: 'An unexpected error occurred' }, 500);
+  }
+};
+
+export const adminBlockUser = async (c: Context) => {
+  const jwtPayload: any = c.get('jwtPayload');
+  const adminId = jwtPayload?.adminId;
+
+  if (!adminId) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const { email, phone } = c.req.valid('json' as never) as z.infer<typeof adminBlockUserSchema>;
+
+  try {
+    const query = email ? { email } : { phoneNumber: phone };
+
+    const user = await User.findOneAndUpdate(query, { $set: { accountStatus: AccountStatus.BLOCKED } }, { new: true });
+
+    if (!user) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+
+    return c.json({ message: 'User blocked successfully' });
+  } catch (error) {
+    console.error('Error blocking user:', error);
     return c.json({ error: 'An unexpected error occurred' }, 500);
   }
 };

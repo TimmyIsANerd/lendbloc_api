@@ -14,10 +14,11 @@ import {
   getAdminProfile,
   uploadAdminAvatar,
   deleteAdminAvatar,
+  adminBlockUser,
 } from './admin.controller';
 import { adminAuthMiddleware } from '../../middleware/adminAuth';
 
-import { adminRegisterSchema, adminSendPhoneOTPSchema, adminVerifyPhoneOTPSchema, adminLoginSchema, adminVerifyLoginSchema, adminLogoutSchema } from './admin.validation';
+import { adminRegisterSchema, adminSendPhoneOTPSchema, adminVerifyPhoneOTPSchema, adminLoginSchema, adminVerifyLoginSchema, adminLogoutSchema, adminBlockUserSchema } from './admin.validation';
 
 export const adminRouter = new Hono();
 
@@ -35,6 +36,8 @@ admin.use('/*', adminAuthMiddleware());
 admin.get('/profile', getAdminProfile);
 admin.put('/profile/avatar', uploadAdminAvatar);
 admin.delete('/profile/avatar', deleteAdminAvatar);
+
+admin.post('/users/block', zValidator('json', adminBlockUserSchema), adminBlockUser);
 
 admin.get('/users', getUsers);
 admin.get('/loans', getLoans);
