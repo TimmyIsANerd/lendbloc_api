@@ -43,6 +43,16 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
   return btoa(binary);
 };
 
+const formatDisplayDate = (date: Date | string | number) => {
+  const d = new Date(date);
+  const month = d.toLocaleString('en-US', { month: 'long' });
+  const day = d.getDate();
+  const year = d.getFullYear();
+  const hours = d.getHours().toString().padStart(2, '0');
+  const minutes = d.getMinutes().toString().padStart(2, '0');
+  return `${month} ${day}, ${year} | ${hours}:${minutes}`;
+};
+
 export const getUsers = async (c: Context) => {
   const users = await User.find();
   return c.json(users);
@@ -444,8 +454,14 @@ export const listBlockedUsers = async (c: Context) => {
       User.countDocuments({ accountStatus: AccountStatus.BLOCKED })
     ]);
 
+    const data = items.map((u: any) => ({
+      email: u.email,
+      blockedAt: u.blockedAt ? formatDisplayDate(u.blockedAt) : null,
+      blockedByAdminName: u.blockedByAdminName ?? null,
+    }));
+
     return c.json({
-      data: items,
+      data,
       meta: {
         page: pageNum,
         limit: limitNum,
