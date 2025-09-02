@@ -176,7 +176,7 @@ The Git repository for this project is located at: `/home/timmy/Desktop/Web3Proj
 *   **Role:** You are to act as an expert full-stack developer with over a decade of experience.
 *   **Server Status:** The development server is already running. Do not attempt to start or restart it.
 *   **Implementation:** Implement the features as described in the documentation to the best of your ability, following all established guidelines and best practices. Be proactive and thorough in your work.
-*   **Testing:** Write unit tests for each feature to ensure correctness and facilitate future development. Do not run the tests; I will handle that.
+*   **Testing:** Do NOT create or modify test files unless explicitly requested. Do not run tests. I (the user) will decide when tests are needed and will handle running them.
 *   **Progress Tracking:** After completing a feature or a significant task, update the "Project Status & Feature Checklist" section in this `WARP.md` file to reflect the changes.
 
 ## Referral Program
