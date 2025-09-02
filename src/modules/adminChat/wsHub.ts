@@ -1,6 +1,5 @@
 import { verify } from 'hono/jwt';
-import { websocket } from 'hono/websocket';
-import type { WSContext } from 'hono/ws';
+import { upgradeWebSocket } from 'hono/bun';
 
 const connections = new Map<string, Set<WebSocket>>();
 
@@ -30,42 +29,42 @@ export const sendToAdmins = async (adminIds: (string | undefined | null)[], payl
   }
 };
 
-export const chatWebSocketHandler = websocket(async (ws, c: WSContext) => {
-  try {
-    // Accept token via Authorization header or ?token=
-    const auth = c.req.raw.headers.get('Authorization');
-    let token = auth?.startsWith('Bearer ') ? auth.slice(7) : undefined;
-    if (!token) {
-      const urlToken = new URL(c.req.url).searchParams.get('token');
-      if (urlToken) token = urlToken;
-    }
-    if (!token) {
-      ws.close();
-      return;
-    }
+export const chatWebSocketHandler = upgradeWebSocket((c) => {
+  // Accept token via Authorization header or ?token=
+  const auth = c.req.header('Authorization');
+  let token = auth?.startsWith('Bearer ') ? auth.slice(7) : undefined;
+  if (!token) {
+    const urlToken = new URL(c.req.url).searchParams.get('token');
+    if (urlToken) token = urlToken;
+  }
+  const secret = process.env.JWT_SECRET || 'your-secret-key';
 
-    const secret = process.env.JWT_SECRET || 'your-secret-key';
-    const decoded: any = await verify(token, secret);
-    const adminId = decoded?.adminId;
-    if (!adminId) {
-      ws.close();
-      return;
-    }
-
-    register(String(adminId), ws);
-
-    ws.addEventListener('message', (evt) => {
-      // Optional: allow clients to send messages via WS in future
-      // Expect JSON with { type: 'ping' } or similar
+  return {
+    onOpen: async (evt, ws) => {
+      try {
+        if (!token) {
+          ws.close();
+          return;
+        }
+        const decoded: any = await verify(token!, secret);
+        const adminId = decoded?.adminId;
+        if (!adminId) {
+          ws.close();
+          return;
+        }
+        register(String(adminId), ws);
+      } catch {
+        try { ws.close(); } catch {}
+      }
+    },
+    onMessage: (evt, ws) => {
       try {
         const data = JSON.parse(String(evt.data || '{}'));
         if (data?.type === 'ping') {
           ws.send(JSON.stringify({ type: 'pong' }));
         }
       } catch {}
-    });
-  } catch {
-    try { ws.close(); } catch {}
-  }
+    },
+  };
 });
 

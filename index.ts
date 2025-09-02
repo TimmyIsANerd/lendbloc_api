@@ -77,8 +77,11 @@ console.log(`
 ==========================================
 `);
 
+import { websocket } from 'hono/bun';
+
 export default {
     port: process.env.PORT || 3000,
     idleTimeout: 255,
     fetch: app.fetch,
+    websocket,
 }
