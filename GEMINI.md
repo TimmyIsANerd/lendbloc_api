@@ -1,3 +1,6 @@
+<!-- Deprecated: Canonical rules have moved to WARP.md -->
+> This file is deprecated. The canonical rules live in WARP.md.
+
 # LendBloc: Beginner-Friendly Crypto Lending Platform (Bun + Hono)
 
 LendBloc is a beginner-friendly crypto lending platform that empowers users to put their digital assets to work. Instead of letting crypto sit idle in a wallet, users can securely lend their assets and earn interest—opening up new income opportunities without complex DeFi tools.
@@ -117,8 +120,16 @@ This section will be updated after each task to track the progress of the projec
 ### `prices` module
 - [x] Get crypto prices (`/prices`)
 
+### `utils`
+- [x] Funds Relocation to Liquidity Wallet (`src/utils/funds/index.ts`)
+- [x] ERC-20/TRC-20 Relocation support (`src/utils/funds/index.ts`)
+
+### `jobs`
+- [x] Deposit Processing Queue and Worker (`src/jobs/deposit.processor.ts`, `src/jobs/queue.ts`)
+
 ### `helpers`
 - [x] OTP Generation
+- [x] Tatum Deposit Webhook (async + confirmation + token support) (`src/modules/webhooks/webhooks.controller.ts`, `src/jobs/*`, `src/helpers/tatum/*`)
 - [x] JSDoc for Twilio `sendOtp` function
 - [x] Shufti Pro Integration (`src/helpers/shufti/index.ts`)
 - [x] Corrected Shufti Pro API authentication
@@ -145,6 +156,10 @@ The backend will be structured as a set of modular routes using Hono. This appro
 *   **`notifications` module:** Manages sending emails and SMS messages to users.
 ### `admin` module
 - [x] Admin Panel API (`/admin`)
+- [x] Admin Avatar Upload (GET `/api/v1/admin/profile`, PUT `/api/v1/admin/profile/avatar`, DELETE `/api/v1/admin/profile/avatar`; image only; 3MB max; base64 data URL)
+- [x] Block User (POST `/api/v1/admin/users/block`; block by email or phone; sets accountStatus=BLOCKED, records blockedAt and admin full name)
+- [x] Unblock User (POST `/api/v1/admin/users/unblock`)
+- [x] List Blocked Users (GET `/api/v1/admin/users/blocked` with `page`, `limit`; returns email, blockedAt, blockedByAdminName)
 
 *   **`admin` module:** Provides the API for the admin panel to manage the platform.
 *   **`referrals` module:** Manages the referral program, including tracking referred users and calculating earnings.
@@ -159,7 +174,7 @@ The Git repository for this project is located at: `/home/timmy/Desktop/Web3Proj
 *   **Server Status:** The development server is already running. Do not attempt to start or restart it.
 *   **Implementation:** Implement the features as described in the documentation to the best of your ability, following all established guidelines and best practices. Be proactive and thorough in your work.
 *   **Testing:** Write unit tests for each feature to ensure correctness and facilitate future development. Do not run the tests; I will handle that.
-*   **Progress Tracking:** After completing a feature or a significant task, update the "Project Status & Feature Checklist" section in this `GEMINI.md` file to reflect the changes.
+*   **Progress Tracking:** After completing a feature or a significant task, update the "Project Status & Feature Checklist" section in this `WARP.md` file to reflect the changes.
 
 ## Referral Program
 
