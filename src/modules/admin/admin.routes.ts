@@ -11,6 +11,9 @@ import {
   adminLogin,
   adminVerifyLogin,
   adminLogout,
+  getAdminProfile,
+  uploadAdminAvatar,
+  deleteAdminAvatar,
 } from './admin.controller';
 import { adminAuthMiddleware } from '../../middleware/adminAuth';
 
@@ -27,7 +30,11 @@ adminRouter.post('/logout', zValidator('json', adminLogoutSchema), adminLogout);
 
 const admin = new Hono();
 
-admin.use('/*', adminAuthMiddleware);
+admin.use('/*', adminAuthMiddleware());
+
+admin.get('/profile', getAdminProfile);
+admin.put('/profile/avatar', uploadAdminAvatar);
+admin.delete('/profile/avatar', deleteAdminAvatar);
 
 admin.get('/users', getUsers);
 admin.get('/loans', getLoans);
