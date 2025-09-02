@@ -162,6 +162,7 @@ The backend will be structured as a set of modular routes using Hono. This appro
 - [x] List Blocked Users (GET `/api/v1/admin/users/blocked` with `page`, `limit`; returns email, blockedAt, blockedByAdminName)
 - [x] List Users KYC (GET `/api/v1/admin/kyc` with `page`, `limit`; returns email, registrationDate, documents {faceProof, documentProof, consentProof}, and status)
 - [x] Admin Chat (WS: `/api/v1/admin/chat/ws`, REST: GET `/api/v1/admin/chat/messages`, POST `/api/v1/admin/chat/messages`; per-message fields: avatar, fullName, time 24h, text)
+- [x] Super Admin: Invite admins via email (POST `/api/v1/admin/invite`)
 
 *   **`admin` module:** Provides the API for the admin panel to manage the platform.
 *   **`referrals` module:** Manages the referral program, including tracking referred users and calculating earnings.
