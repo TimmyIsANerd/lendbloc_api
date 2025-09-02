@@ -7,6 +7,7 @@ import Admin from '../../models/Admin';
 import AdminOtp from '../../models/AdminOtp';
 import Wallet from '../../models/Wallet';
 import AdminRefreshToken from '../../models/AdminRefreshToken';
+import RefreshToken from '../../models/RefreshToken';
 import bcrypt from 'bcrypt';
 import { sign } from 'hono/jwt';
 import { generateOtp } from '../../helpers/otp';
@@ -392,6 +393,9 @@ export const adminBlockUser = async (c: Context) => {
     if (!user) {
       return c.json({ error: 'User not found' }, 404);
     }
+
+    // End current login session by deleting all refresh tokens for the user
+    await RefreshToken.deleteMany({ userId: user._id });
 
     return c.json({ message: 'User blocked successfully' });
   } catch (error) {

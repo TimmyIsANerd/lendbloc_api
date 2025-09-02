@@ -1,5 +1,6 @@
 import { type Context, type Next } from 'hono';
 import { verify } from 'hono/jwt';
+import User, { AccountStatus } from '../models/User';
 
 export const authMiddleware = async (c: Context, next: Next) => {
   const token = c.req.header('Authorization')?.replace('Bearer ', '');
@@ -11,7 +12,21 @@ export const authMiddleware = async (c: Context, next: Next) => {
   const secret = process.env.JWT_SECRET || 'your-secret-key';
 
   try {
-    const decoded = await verify(token, secret);
+    const decoded: any = await verify(token, secret);
+
+    // Fetch user and ensure account is not blocked
+    if (!decoded?.userId) {
+      return c.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, 401);
+    }
+
+    const user = await User.findById(decoded.userId).select('accountStatus');
+    if (!user) {
+      return c.json({ error: 'Unauthorized', code: 'UNAUTHORIZED' }, 401);
+    }
+    if (user.accountStatus === AccountStatus.BLOCKED) {
+      return c.json({ error: 'Account is blocked', code: 'ACCOUNT_BLOCKED' }, 403);
+    }
+
     c.set('jwtPayload', decoded);
     await next();
   } catch (error) {
