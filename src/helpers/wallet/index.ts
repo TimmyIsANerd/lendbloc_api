@@ -88,6 +88,25 @@ export const initializeWalletSystem = async (userId: string) => {
 
 export const initializeLiquidityWalletSystem = async (adminId: string) => {
     try {
+        // Generate EVM Wallet
+        const evmWallet = createEvmWalletWithViem();
+        const encryptedEvmMnemonic = encryptMnemonic(evmWallet.mnemonic);
+        const evmAsset = await Asset.findOneAndUpdate(
+            { symbol: 'ETH', name: 'Ethereum' },
+            { $setOnInsert: { symbol: 'ETH', name: 'Ethereum', type: 'crypto' } },
+            { upsert: true, new: true }
+        );
+        await Wallet.create({
+            userId: adminId,
+            assetId: evmAsset._id,
+            address: evmWallet.address,
+            encryptedMnemonic: encryptedEvmMnemonic,
+            network: 'ETH',
+            balance: 0,
+            isLiquidityWallet: true
+        });
+        console.log(`EVM Liquidity Wallet created for admin ${adminId}: ${evmWallet.address}`);
+
         // Generate TRON Wallet
         const tronWallet = await generateTronWallet();
         const encryptedTronMnemonic = encryptMnemonic(tronWallet.mnemonic);

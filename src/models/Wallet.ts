@@ -7,6 +7,7 @@ export interface IWallet extends Document {
   balance: number;
   encryptedMnemonic: string;
   network: string; // BSC, ETH, TRON, BTC
+  isLiquidityWallet: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -18,6 +19,7 @@ const WalletSchema: Schema = new Schema(
     address: { type: String, required: true, unique: true },
     balance: { type: Number, required: true, default: 0 },
     encryptedMnemonic: { type: String, required: true },
+    isLiquidityWallet: { type: Boolean, default: false },
     network: { type: String, required: true, enum: ['BSC', 'ETH', 'TRON', 'BTC', 'LTC'] }
   },
   { timestamps: true }
