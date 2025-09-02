@@ -25,7 +25,7 @@ const AdminSchema: Schema = new Schema(
     fullName: { type: String, required: true },
     username: { type: String, required: true },
     email: { type: String, required: true, unique: true },
-    phoneNumber: { type: String, required: true, unique: true },
+    phoneNumber: { type: String, unique: true },
     secondaryEmail: { type: String, required: true, unique: true },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: Object.values(AdminRole), default: AdminRole.ADMIN },
