@@ -1,5 +1,5 @@
 import { verify } from 'hono/jwt';
-import { upgradeWebSocket } from 'hono/bun';
+import { createBunWebSocket } from 'hono/bun';
 
 const connections = new Map<string, Set<WebSocket>>();
 
@@ -28,6 +28,8 @@ export const sendToAdmins = async (adminIds: (string | undefined | null)[], payl
     }
   }
 };
+
+const { upgradeWebSocket } = createBunWebSocket();
 
 export const chatWebSocketHandler = upgradeWebSocket((c) => {
   // Accept token via Authorization header or ?token=
