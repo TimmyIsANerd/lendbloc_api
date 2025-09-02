@@ -12,6 +12,7 @@
         "@tatumio/tatum": "^4.2.55",
         "@tatumio/tron-wallet-provider": "^1.0.4",
         "@tatumio/utxo-wallet-provider": "^1.0.7",
+        "@types/bcrypt": "^6.0.0",
         "@types/bip32": "^2.0.4",
         "@types/bitcoinjs-lib": "^5.0.4",
         "@types/pg": "^8.15.5",
@@ -119,6 +120,8 @@
     "@tatumio/utxo-wallet-provider": ["@tatumio/utxo-wallet-provider@1.0.7", "", { "dependencies": { "@bitcoinerlab/secp256k1": "^1.1.1", "bignumber.js": "^9.1.2", "bip32": "^4.0.0", "bip39": "^3.1.0", "bitcoinjs-lib": "^6.1.5", "bitcore-lib": "^10.0.36", "bitcore-lib-doge": "^10.0.36", "bitcore-lib-ltc": "^10.0.36", "ecpair": "^2.1.0" } }, "sha512-5VJSzHf5XdHmywtr1gKR48BeN+QBT8PaCRC32rmf0dE5Hri/MAXRkRtT+YQG7f0eOEYiQJN/w6M3w9jrRDKgHA=="],
 
     "@tronweb3/google-protobuf": ["@tronweb3/google-protobuf@3.21.4", "", {}, "sha512-joxgV4esCdyZ921AprMIG1T7HjkypquhbJ5qJti/priCBJhRE1z9GOxIEMvayxSVSRbMGIoJNE0Knrg3vpwM1w=="],
+
+    "@types/bcrypt": ["@types/bcrypt@6.0.0", "", { "dependencies": { "@types/node": "*" } }, "sha512-/oJGukuH3D2+D+3H4JWLaAsJ/ji86dhRidzZ/Od7H/i8g+aCmvkeCc6Ni/f9uxGLSQVCRZkX2/lqEFG2BvWtlQ=="],
 
     "@types/bip32": ["@types/bip32@2.0.4", "", { "dependencies": { "bip32": "*" } }, "sha512-5VE8jtDlFx94IyopdhtkcZ/6oCSvpLS1yOcwkUgi9/zwL9LG99q4+nYv6N/HntPGqB9wcE6osxrtmErt75sjxA=="],
 
