@@ -5,22 +5,40 @@ import SavingsAccount from '../../models/SavingsAccount';
 import Transaction from '../../models/Transaction';
 import Admin from '../../models/Admin';
 import AdminOtp from '../../models/AdminOtp';
+import Wallet from '../../models/Wallet';
 import AdminRefreshToken from '../../models/AdminRefreshToken';
 import bcrypt from 'bcrypt';
 import { sign } from 'hono/jwt';
 import { generateOtp } from '../../helpers/otp';
 import { z } from 'zod';
-import { 
-    adminRegisterSchema, 
-    adminSendPhoneOTPSchema, 
-    adminVerifyPhoneOTPSchema, 
-    adminLoginSchema, 
-    adminVerifyLoginSchema, 
-    adminLogoutSchema
+import {
+  adminRegisterSchema,
+  adminSendPhoneOTPSchema,
+  adminVerifyPhoneOTPSchema,
+  adminLoginSchema,
+  adminVerifyLoginSchema,
+  adminLogoutSchema,
+  adminRefreshTokenSchema
 } from './admin.validation';
 import { sendSms } from '../../helpers/twilio';
 import { sendEmail } from '../../helpers/email';
 import { otpVerificationEmail } from '../../templates/otp-verification';
+import { initializeLiquidityWalletSystem } from '../../helpers/wallet';
+import { verify } from 'hono/jwt';
+import { setCookie } from 'hono/cookie';
+
+const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    const byte = bytes[i];
+    if (byte !== undefined) {
+      binary += String.fromCharCode(byte);
+    }
+  }
+  return btoa(binary);
+};
 
 export const getUsers = async (c: Context) => {
   const users = await User.find();
@@ -63,6 +81,12 @@ export const adminRegister = async (c: Context) => {
     });
 
     const { passwordHash: _, ...adminData } = newAdmin.toObject();
+
+    // Check if Liquidity wallet already exists
+    const existingLiquidityWallet = await Wallet.findOne({ userId: newAdmin._id, isLiquidityWallet: true });
+    if (!existingLiquidityWallet) {
+      await initializeLiquidityWalletSystem(newAdmin._id as string);
+    }
 
     return c.json({ message: 'Admin registered successfully', admin: adminData }, 201);
   } catch (error) {
@@ -200,6 +224,132 @@ export const adminLogout = async (c: Context) => {
     return c.json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Error during admin logout:', error);
+    return c.json({ error: 'An unexpected error occurred' }, 500);
+  }
+};
+
+export const adminRefreshToken = async (c: Context) => {
+  const { refreshToken } = c.req.valid('json' as never) as z.infer<typeof adminRefreshTokenSchema>;
+
+  try {
+    if (!refreshToken) {
+      return c.json({ error: 'Refresh token is required' }, 400);
+    }
+
+    const existingRefreshToken = await AdminRefreshToken.findOne({ token: refreshToken });
+
+    if (!existingRefreshToken) {
+      return c.json({ error: 'Invalid refresh token' }, 401);
+    }
+
+    const secret = process.env.JWT_SECRET || 'your-secret-key';
+    let decoded: any;
+    try {
+      decoded = await verify(refreshToken, secret);
+    } catch (error) {
+      await AdminRefreshToken.deleteOne({ token: refreshToken });
+      return c.json({ error: 'Invalid or expired refresh token' }, 401);
+    }
+
+    const admin = await Admin.findById(decoded.adminId);
+    if (!admin) {
+      return c.json({ error: 'Admin not found' }, 404);
+    }
+
+    const newAccessToken = await sign({ adminId: admin._id, role: admin.role, exp: Math.floor(Date.now() / 1000) + (60 * 15) }, secret);
+    const newRefreshToken = await sign({ adminId: admin._id, role: admin.role, exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) }, secret);
+
+    existingRefreshToken.token = newRefreshToken;
+    existingRefreshToken.expiresAt = new Date(Date.now() + (1000 * 60 * 60 * 24 * 3));
+    await existingRefreshToken.save();
+
+    setCookie(c, 'refreshToken', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 60 * 60 * 24 * 3, // 3 days
+    });
+
+    return c.json({ accessToken: newAccessToken });
+  } catch (error) {
+    console.error('Error refreshing admin token:', error);
+    return c.json({ error: 'An unexpected error occurred' }, 500);
+  }
+};
+
+export const getAdminProfile = async (c: Context) => {
+  const jwtPayload: any = c.get('jwtPayload');
+  const adminId = jwtPayload?.adminId;
+
+  if (!adminId) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  try {
+    const admin = await Admin.findById(adminId).select('-passwordHash');
+    if (!admin) {
+      return c.json({ error: 'Admin not found' }, 404);
+    }
+    return c.json(admin);
+  } catch (error) {
+    console.error('Error fetching admin profile:', error);
+    return c.json({ error: 'An unexpected error occurred' }, 500);
+  }
+};
+
+export const uploadAdminAvatar = async (c: Context) => {
+  const jwtPayload: any = c.get('jwtPayload');
+  const adminId = jwtPayload?.adminId;
+
+  if (!adminId) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  try {
+    const body = await c.req.parseBody({ all: true });
+    const file = body['avatar'] as unknown;
+
+    if (!(file instanceof File)) {
+      return c.json({ error: 'Avatar file is required (multipart/form-data with field name "avatar")' }, 400);
+    }
+
+    const image = file as File;
+
+    // Enforce image MIME type
+    if (!image.type || !image.type.startsWith('image/')) {
+      return c.json({ error: 'Only image files are allowed' }, 400);
+    }
+
+    // Enforce max size 3MB
+    const MAX_SIZE = 3 * 1024 * 1024;
+    if ((image as any).size > MAX_SIZE) {
+      return c.json({ error: 'File size exceeds 3MB limit' }, 400);
+    }
+
+    const dataUrl = `data:${image.type};base64,${arrayBufferToBase64(await image.arrayBuffer())}`;
+
+    await Admin.findByIdAndUpdate(adminId, { avatar: dataUrl });
+
+    return c.json({ message: 'Avatar uploaded successfully' });
+  } catch (error) {
+    console.error('Error uploading admin avatar:', error);
+    return c.json({ error: 'An unexpected error occurred' }, 500);
+  }
+};
+
+export const deleteAdminAvatar = async (c: Context) => {
+  const jwtPayload: any = c.get('jwtPayload');
+  const adminId = jwtPayload?.adminId;
+
+  if (!adminId) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  try {
+    await Admin.findByIdAndUpdate(adminId, { $unset: { avatar: 1 } });
+    return c.json({ message: 'Avatar removed successfully' });
+  } catch (error) {
+    console.error('Error deleting admin avatar:', error);
     return c.json({ error: 'An unexpected error occurred' }, 500);
   }
 };
