@@ -45,3 +45,15 @@ export const adminBlockUserSchema = z.object({
 }).refine((data) => !!data.email || !!data.phone, {
     message: 'Either email or phone is required',
 });
+
+export const adminUnblockUserSchema = z.object({
+    email: z.string().email().optional(),
+    phone: z.string().optional(),
+}).refine((data) => !!data.email || !!data.phone, {
+    message: 'Either email or phone is required',
+});
+
+export const adminListBlockedUsersSchema = z.object({
+    page: z.coerce.number().int().min(1).optional(),
+    limit: z.coerce.number().int().min(1).max(100).optional(),
+});

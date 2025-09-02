@@ -19,7 +19,9 @@ import {
   adminVerifyLoginSchema,
   adminLogoutSchema,
   adminRefreshTokenSchema,
-  adminBlockUserSchema
+  adminBlockUserSchema,
+  adminUnblockUserSchema,
+  adminListBlockedUsersSchema
 } from './admin.validation';
 import { sendSms } from '../../helpers/twilio';
 import { sendEmail } from '../../helpers/email';
@@ -366,9 +368,16 @@ export const adminBlockUser = async (c: Context) => {
   const { email, phone } = c.req.valid('json' as never) as z.infer<typeof adminBlockUserSchema>;
 
   try {
+    const admin = await Admin.findById(adminId).select('fullName');
+    if (!admin) return c.json({ error: 'Admin not found' }, 404);
+
     const query = email ? { email } : { phoneNumber: phone };
 
-    const user = await User.findOneAndUpdate(query, { $set: { accountStatus: AccountStatus.BLOCKED } }, { new: true });
+    const user = await User.findOneAndUpdate(
+      query,
+      { $set: { accountStatus: AccountStatus.BLOCKED, blockedAt: new Date(), blockedByAdminName: admin.fullName } },
+      { new: true }
+    );
 
     if (!user) {
       return c.json({ error: 'User not found' }, 404);
@@ -377,6 +386,75 @@ export const adminBlockUser = async (c: Context) => {
     return c.json({ message: 'User blocked successfully' });
   } catch (error) {
     console.error('Error blocking user:', error);
+    return c.json({ error: 'An unexpected error occurred' }, 500);
+  }
+};
+
+export const adminUnblockUser = async (c: Context) => {
+  const jwtPayload: any = c.get('jwtPayload');
+  const adminId = jwtPayload?.adminId;
+
+  if (!adminId) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const { email, phone } = c.req.valid('json' as never) as z.infer<typeof adminUnblockUserSchema>;
+
+  try {
+    const query = email ? { email } : { phoneNumber: phone };
+
+    const user = await User.findOneAndUpdate(
+      query,
+      { $set: { accountStatus: AccountStatus.ACTIVE }, $unset: { blockedAt: 1, blockedByAdminName: 1 } },
+      { new: true }
+    );
+
+    if (!user) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+
+    return c.json({ message: 'User unblocked successfully' });
+  } catch (error) {
+    console.error('Error unblocking user:', error);
+    return c.json({ error: 'An unexpected error occurred' }, 500);
+  }
+};
+
+export const listBlockedUsers = async (c: Context) => {
+  const jwtPayload: any = c.get('jwtPayload');
+  const adminId = jwtPayload?.adminId;
+
+  if (!adminId) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const { page, limit } = c.req.valid('query' as never) as z.infer<typeof adminListBlockedUsersSchema>;
+
+  const pageNum = page ?? 1;
+  const limitNum = limit ?? 20;
+  const skip = (pageNum - 1) * limitNum;
+
+  try {
+    const [items, total] = await Promise.all([
+      User.find({ accountStatus: AccountStatus.BLOCKED })
+        .select('email blockedAt blockedByAdminName')
+        .sort({ blockedAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      User.countDocuments({ accountStatus: AccountStatus.BLOCKED })
+    ]);
+
+    return c.json({
+      data: items,
+      meta: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum) || 1,
+      },
+    });
+  } catch (error) {
+    console.error('Error listing blocked users:', error);
     return c.json({ error: 'An unexpected error occurred' }, 500);
   }
 };

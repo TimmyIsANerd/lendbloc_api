@@ -1,5 +1,11 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export enum AccountStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  BLOCKED = 'BLOCKED',
+}
+
 export interface IUser extends Document {
   title: string;
   fullName: string;
@@ -14,6 +20,9 @@ export interface IUser extends Document {
   isPhoneNumberVerified: boolean;
   allowPasswordReset: boolean;
   allowEmailChange: boolean;
+  accountStatus: AccountStatus;
+  blockedAt?: Date;
+  blockedByAdminName?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,6 +42,9 @@ const UserSchema: Schema = new Schema(
     isPhoneNumberVerified: { type: Boolean, default: false },
     allowPasswordReset: { type: Boolean, default: false },
     allowEmailChange: { type: Boolean, default: false },
+    accountStatus: { type: String, enum: Object.values(AccountStatus), default: AccountStatus.ACTIVE },
+    blockedAt: { type: Date },
+    blockedByAdminName: { type: String },
   },
   { timestamps: true }
 );
