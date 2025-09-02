@@ -20,6 +20,7 @@
     "@tatumio/tatum": "^4.2.55",
     "@tatumio/tron-wallet-provider": "^1.0.4",
     "@tatumio/utxo-wallet-provider": "^1.0.7",
+    "@types/bcrypt": "^6.0.0",
     "@types/bip32": "^2.0.4",
     "@types/bitcoinjs-lib": "^5.0.4",
     "@types/pg": "^8.15.5",
