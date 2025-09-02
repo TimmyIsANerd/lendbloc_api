@@ -48,7 +48,7 @@ const auth = new Hono();
 
 const phoneLimiter = rateLimiter({
   windowMs: 2 * 60 * 1000, // 2 minutes
-  limit: 1,
+  limit: 3,
   standardHeaders: 'draft-6',
   keyGenerator: (c) => {
     const { userId } = c.req.valid('json' as never) as z.infer<
