@@ -63,6 +63,10 @@ export const adminListKycSchema = z.object({
     limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 
+export const adminUpdateSavingsApySchema = z.object({
+    savingsApy: z.coerce.number().min(0),
+});
+
 export const adminInviteSchema = z.object({
     email: z.string().email(),
     role: z.enum(["ADMIN", "SUPER_ADMIN"]).optional().default("ADMIN"),

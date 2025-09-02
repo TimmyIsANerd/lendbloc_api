@@ -18,10 +18,13 @@ import {
   adminUnblockUser,
   listBlockedUsers,
   listKycUsers,
+  inviteAdmin,
+  getSystemSettings,
+  adminUpdateSavingsApy,
 } from './admin.controller';
 import { adminAuthMiddleware } from '../../middleware/adminAuth';
 
-import { adminRegisterSchema, adminSendPhoneOTPSchema, adminVerifyPhoneOTPSchema, adminLoginSchema, adminVerifyLoginSchema, adminLogoutSchema, adminBlockUserSchema, adminUnblockUserSchema, adminListBlockedUsersSchema, adminListKycSchema, adminInviteSchema } from './admin.validation';
+import { adminRegisterSchema, adminSendPhoneOTPSchema, adminVerifyPhoneOTPSchema, adminLoginSchema, adminVerifyLoginSchema, adminLogoutSchema, adminBlockUserSchema, adminUnblockUserSchema, adminListBlockedUsersSchema, adminListKycSchema, adminInviteSchema, adminUpdateSavingsApySchema } from './admin.validation';
 
 export const adminRouter = new Hono();
 
@@ -44,6 +47,10 @@ admin.post('/users/block', zValidator('json', adminBlockUserSchema), adminBlockU
 admin.post('/users/unblock', zValidator('json', adminUnblockUserSchema), adminUnblockUser);
 admin.get('/users/blocked', zValidator('query', adminListBlockedUsersSchema), listBlockedUsers);
 admin.get('/kyc', zValidator('query', adminListKycSchema), listKycUsers);
+
+// Settings endpoints
+admin.get('/settings', getSystemSettings);
+admin.put('/settings/savings-apy', zValidator('json', adminUpdateSavingsApySchema), adminUpdateSavingsApy);
 
 // Super Admin only: invite new admins
 import { AdminRole } from '../../models/Admin';

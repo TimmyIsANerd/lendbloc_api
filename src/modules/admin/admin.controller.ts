@@ -36,6 +36,7 @@ import { setCookie } from 'hono/cookie';
 import AdminInvite from '../../models/AdminInvite';
 import { adminInviteEmail } from '../../templates/admin-invite';
 import { nanoid } from 'nanoid';
+import SystemSetting from '../../models/SystemSetting';
 
 const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
   let binary = '';
@@ -320,7 +321,14 @@ export const adminVerifyLogin = async (c: Context) => {
       expiresAt: new Date(Date.now() + (1000 * 60 * 60 * 24 * 3)),
     });
 
-    return c.json({ accessToken, refreshToken });
+    setCookie(c, 'refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 60 * 60 * 24 * 3, // 3 days
+    });
+
+    return c.json({ accessToken });
   } catch (error) {
     console.error('Error verifying admin login:', error);
     return c.json({ error: 'An unexpected error occurred' }, 500);
@@ -572,6 +580,55 @@ export const listBlockedUsers = async (c: Context) => {
     });
   } catch (error) {
     console.error('Error listing blocked users:', error);
+    return c.json({ error: 'An unexpected error occurred' }, 500);
+  }
+};
+
+export const getSystemSettings = async (c: Context) => {
+  const jwtPayload: any = c.get('jwtPayload');
+  const adminId = jwtPayload?.adminId;
+
+  if (!adminId) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  try {
+    let settings = await SystemSetting.findOne({ key: 'GLOBAL' }).select('savingsApy createdAt updatedAt');
+    if (!settings) {
+      settings = await SystemSetting.create({ savingsApy: 0 });
+    }
+
+    return c.json({
+      savingsApy: settings.savingsApy,
+      createdAt: settings.createdAt,
+      updatedAt: settings.updatedAt,
+    });
+  } catch (error) {
+    console.error('Error fetching system settings:', error);
+    return c.json({ error: 'An unexpected error occurred' }, 500);
+  }
+};
+
+export const adminUpdateSavingsApy = async (c: Context) => {
+  const jwtPayload: any = c.get('jwtPayload');
+  const adminId = jwtPayload?.adminId;
+
+  if (!adminId) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const { savingsApy } = c.req.valid('json' as never) as { savingsApy: number };
+
+  try {
+    const settings = await SystemSetting.findOneAndUpdate(
+      { key: 'GLOBAL' },
+      { $set: { savingsApy } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    ).select('savingsApy createdAt updatedAt');
+
+    return c.json({ message: 'Savings APY updated successfully', savingsApy: settings!.savingsApy });
+  } catch (error) {
+    console.error('Error updating savings APY:', error);
     return c.json({ error: 'An unexpected error occurred' }, 500);
   }
 };
