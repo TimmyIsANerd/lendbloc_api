@@ -24,7 +24,7 @@ export const sendToAdmins = async (adminIds: (string | undefined | null)[], payl
     for (const ws of set) {
       try {
         ws.send(JSON.stringify(payload));
-      } catch {}
+      } catch { }
     }
   }
 };
@@ -42,7 +42,7 @@ export const chatWebSocketHandler = upgradeWebSocket((c) => {
   const secret = process.env.JWT_SECRET || 'your-secret-key';
 
   return {
-    onOpen: async (evt, ws) => {
+    onOpen: async (evt, ws: any) => {
       try {
         if (!token) {
           ws.close();
@@ -56,7 +56,7 @@ export const chatWebSocketHandler = upgradeWebSocket((c) => {
         }
         register(String(adminId), ws);
       } catch {
-        try { ws.close(); } catch {}
+        try { ws.close(); } catch { }
       }
     },
     onMessage: (evt, ws) => {
@@ -65,7 +65,7 @@ export const chatWebSocketHandler = upgradeWebSocket((c) => {
         if (data?.type === 'ping') {
           ws.send(JSON.stringify({ type: 'pong' }));
         }
-      } catch {}
+      } catch { }
     },
   };
 });

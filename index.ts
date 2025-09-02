@@ -18,10 +18,12 @@ import prices from './src/modules/prices/prices.routes';
 import dashboard from './src/modules/dashboard/dashboard.routes';
 import { adminChat } from './src/modules/adminChat/chat.routes';
 import connectDB from './src/config/db';
+import { createBunWebSocket } from 'hono/bun'
 
 connectDB();
 
 const app = new Hono();
+const { websocket } = createBunWebSocket()
 
 // API Logger
 app.use(logger())
@@ -77,7 +79,6 @@ console.log(`
 ==========================================
 `);
 
-import { websocket } from 'hono/bun';
 
 export default {
     port: process.env.PORT || 3000,

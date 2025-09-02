@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { chatGetMessagesSchema, chatSendMessageSchema } from './chat.validation';
 import AdminChatMessage from '../../models/AdminChatMessage';
 import Admin from '../../models/Admin';
-import type { Infer } from 'hono/zod-validator';
 import { sendToAdmins } from './wsHub';
 
 const formatTime24 = (date: Date | string | number) => {
