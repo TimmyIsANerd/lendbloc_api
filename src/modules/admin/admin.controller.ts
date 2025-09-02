@@ -22,11 +22,13 @@ import {
   adminRefreshTokenSchema,
   adminBlockUserSchema,
   adminUnblockUserSchema,
-  adminListBlockedUsersSchema
+  adminListBlockedUsersSchema,
+  adminListKycSchema
 } from './admin.validation';
 import { sendSms } from '../../helpers/twilio';
 import { sendEmail } from '../../helpers/email';
 import { otpVerificationEmail } from '../../templates/otp-verification';
+import KycRecord from '../../models/KycRecord';
 import { initializeLiquidityWalletSystem } from '../../helpers/wallet';
 import { verify } from 'hono/jwt';
 import { setCookie } from 'hono/cookie';
@@ -42,6 +44,59 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
     }
   }
   return btoa(binary);
+};
+
+export const listKycUsers = async (c: Context) => {
+  const jwtPayload: any = c.get('jwtPayload');
+  const adminId = jwtPayload?.adminId;
+
+  if (!adminId) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const { page, limit } = c.req.valid('query' as never) as z.infer<typeof adminListKycSchema>;
+  const pageNum = page ?? 1;
+  const limitNum = limit ?? 20;
+  const skip = (pageNum - 1) * limitNum;
+
+  try {
+    const [records, total] = await Promise.all([
+      KycRecord.find()
+        .select('userId status documentProof faceProof consentProof createdAt')
+        .populate({ path: 'userId', select: 'email createdAt' })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNum),
+      KycRecord.countDocuments({})
+    ]);
+
+    const data = records.map((rec: any) => {
+      const user = rec.userId as { email?: string; createdAt?: Date } | null;
+      return {
+        email: user?.email ?? null,
+        registrationDate: user?.createdAt ? formatDisplayDate(user.createdAt) : null,
+        documents: {
+          faceProof: rec.faceProof ?? null,
+          documentProof: rec.documentProof ?? null,
+          consentProof: rec.consentProof ?? null,
+        },
+        status: rec.status,
+      };
+    });
+
+    return c.json({
+      data,
+      meta: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum) || 1,
+      },
+    });
+  } catch (error) {
+    console.error('Error listing KYC users:', error);
+    return c.json({ error: 'An unexpected error occurred' }, 500);
+  }
 };
 
 const formatDisplayDate = (date: Date | string | number) => {

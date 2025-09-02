@@ -17,10 +17,11 @@ import {
   adminBlockUser,
   adminUnblockUser,
   listBlockedUsers,
+  listKycUsers,
 } from './admin.controller';
 import { adminAuthMiddleware } from '../../middleware/adminAuth';
 
-import { adminRegisterSchema, adminSendPhoneOTPSchema, adminVerifyPhoneOTPSchema, adminLoginSchema, adminVerifyLoginSchema, adminLogoutSchema, adminBlockUserSchema, adminUnblockUserSchema, adminListBlockedUsersSchema } from './admin.validation';
+import { adminRegisterSchema, adminSendPhoneOTPSchema, adminVerifyPhoneOTPSchema, adminLoginSchema, adminVerifyLoginSchema, adminLogoutSchema, adminBlockUserSchema, adminUnblockUserSchema, adminListBlockedUsersSchema, adminListKycSchema } from './admin.validation';
 
 export const adminRouter = new Hono();
 
@@ -42,6 +43,7 @@ admin.delete('/profile/avatar', deleteAdminAvatar);
 admin.post('/users/block', zValidator('json', adminBlockUserSchema), adminBlockUser);
 admin.post('/users/unblock', zValidator('json', adminUnblockUserSchema), adminUnblockUser);
 admin.get('/users/blocked', zValidator('query', adminListBlockedUsersSchema), listBlockedUsers);
+admin.get('/kyc', zValidator('query', adminListKycSchema), listKycUsers);
 
 admin.get('/users', getUsers);
 admin.get('/loans', getLoans);
