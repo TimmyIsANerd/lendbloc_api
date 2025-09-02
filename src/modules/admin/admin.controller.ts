@@ -23,7 +23,8 @@ import {
   adminBlockUserSchema,
   adminUnblockUserSchema,
   adminListBlockedUsersSchema,
-  adminListKycSchema
+  adminListKycSchema,
+  adminInviteSchema
 } from './admin.validation';
 import { sendSms } from '../../helpers/twilio';
 import { sendEmail } from '../../helpers/email';
@@ -32,6 +33,9 @@ import KycRecord from '../../models/KycRecord';
 import { initializeLiquidityWalletSystem } from '../../helpers/wallet';
 import { verify } from 'hono/jwt';
 import { setCookie } from 'hono/cookie';
+import AdminInvite from '../../models/AdminInvite';
+import { adminInviteEmail } from '../../templates/admin-invite';
+import { nanoid } from 'nanoid';
 
 const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
   let binary = '';
@@ -44,6 +48,44 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
     }
   }
   return btoa(binary);
+};
+
+export const inviteAdmin = async (c: Context) => {
+  const jwtPayload: any = c.get('jwtPayload');
+  const inviterId = jwtPayload?.adminId;
+
+  if (!inviterId) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const { email, role } = c.req.valid('json' as never) as z.infer<typeof adminInviteSchema>;
+
+  try {
+    const existing = await Admin.findOne({ email });
+    if (existing) {
+      return c.json({ error: 'Admin with this email already exists' }, 409);
+    }
+
+    const token = nanoid(40);
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7); // 7 days
+
+    const invite = await AdminInvite.create({
+      email,
+      role,
+      token,
+      expiresAt,
+      invitedBy: inviterId,
+    });
+
+    const inviter = await Admin.findById(inviterId).select('fullName');
+
+    await sendEmail(email, '[LENDBLOC] Admin Invitation', adminInviteEmail(inviter?.fullName || 'An Admin', token));
+
+    return c.json({ message: 'Invitation sent successfully' });
+  } catch (error) {
+    console.error('Error creating admin invite:', error);
+    return c.json({ error: 'An unexpected error occurred' }, 500);
+  }
 };
 
 export const listKycUsers = async (c: Context) => {

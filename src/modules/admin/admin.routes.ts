@@ -21,7 +21,7 @@ import {
 } from './admin.controller';
 import { adminAuthMiddleware } from '../../middleware/adminAuth';
 
-import { adminRegisterSchema, adminSendPhoneOTPSchema, adminVerifyPhoneOTPSchema, adminLoginSchema, adminVerifyLoginSchema, adminLogoutSchema, adminBlockUserSchema, adminUnblockUserSchema, adminListBlockedUsersSchema, adminListKycSchema } from './admin.validation';
+import { adminRegisterSchema, adminSendPhoneOTPSchema, adminVerifyPhoneOTPSchema, adminLoginSchema, adminVerifyLoginSchema, adminLogoutSchema, adminBlockUserSchema, adminUnblockUserSchema, adminListBlockedUsersSchema, adminListKycSchema, adminInviteSchema } from './admin.validation';
 
 export const adminRouter = new Hono();
 
@@ -44,6 +44,10 @@ admin.post('/users/block', zValidator('json', adminBlockUserSchema), adminBlockU
 admin.post('/users/unblock', zValidator('json', adminUnblockUserSchema), adminUnblockUser);
 admin.get('/users/blocked', zValidator('query', adminListBlockedUsersSchema), listBlockedUsers);
 admin.get('/kyc', zValidator('query', adminListKycSchema), listKycUsers);
+
+// Super Admin only: invite new admins
+import { AdminRole } from '../../models/Admin';
+admin.post('/invite', adminAuthMiddleware(AdminRole.SUPER_ADMIN), zValidator('json', adminInviteSchema), inviteAdmin);
 
 admin.get('/users', getUsers);
 admin.get('/loans', getLoans);
