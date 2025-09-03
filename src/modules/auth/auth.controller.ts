@@ -18,6 +18,8 @@ import { nanoid } from 'nanoid';
 import shuftiPro, { type ShuftiVerifyPayload } from '../../helpers/shufti';
 import KycRecord, { KycStatus } from '../../models/KycRecord';
 
+const TEST_ENV: boolean = process.env.CURRENT_ENVIRONMENT === 'DEVELOPMENT';
+
 import {
   registerUserSchema,
   loginUserSchema,
@@ -328,9 +330,9 @@ export const registerUser = async (c: Context) => {
       phoneNumber: phone,
       passwordHash,
       kycReferenceId: nanoid(),
-      isKycVerified: false,
-      isEmailVerified: false,
-      isPhoneNumberVerified: false,
+      isKycVerified: TEST_ENV ? true : false,
+      isEmailVerified: TEST_ENV ? true : false,
+      isPhoneNumberVerified: TEST_ENV ? true : false,
       referralId: nanoid(6)
     });
 
@@ -360,18 +362,20 @@ export const registerUser = async (c: Context) => {
       console.log(`Wallets already initialized for user ${user._id}. Skipping initialization.`);
     }
 
-    const otpCode = await generateOtp();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    if (!TEST_ENV) {
+      const otpCode = await generateOtp();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    console.log('OTP Code:', otpCode);
+      console.log('OTP Code:', otpCode);
 
-    await Otp.findOneAndUpdate(
-      { userId: user._id },
-      { code: otpCode, expiresAt },
-      { upsert: true, new: true }
-    );
+      await Otp.findOneAndUpdate(
+        { userId: user._id },
+        { code: otpCode, expiresAt },
+        { upsert: true, new: true }
+      );
 
-    sendEmail(user.email, '[LENDBLOCK] Email Verification OTP', otpVerificationEmail(otpCode, 10));
+      sendEmail(user.email, '[LENDBLOCK] Email Verification OTP', otpVerificationEmail(otpCode, 10));
+    }
 
     return c.json({ message: 'User registered successfully', userId: user._id });
   } catch (error) {
@@ -537,25 +541,26 @@ export const loginUser = async (c: Context) => {
   }
 
 
-  const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+  if (!TEST_ENV) {
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-  console.log('OTP Code:', otpCode);
+    console.log('OTP Code:', otpCode);
 
-  await Otp.findOneAndUpdate(
-    { userId: user._id },
-    { code: otpCode, expiresAt },
-    { upsert: true, new: true }
-  );
+    await Otp.findOneAndUpdate(
+      { userId: user._id },
+      { code: otpCode, expiresAt },
+      { upsert: true, new: true }
+    );
 
-  if (email) {
-    sendEmail(user.email, '[LENDBLOCK] Login OTP', otpVerificationEmail(otpCode, 10));
-  } else {
-    await sendSms(user.phoneNumber, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
+    if (email) {
+      sendEmail(user.email, '[LENDBLOCK] Login OTP', otpVerificationEmail(otpCode, 10));
+    } else {
+      await sendSms(user.phoneNumber, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
+    }
   }
 
-
-  return c.json({ message: 'An OTP has been sent to your email/phone.', userId: user.id });
+  return c.json({ message: TEST_ENV ? 'Development mode: OTP step is bypassed' : 'An OTP has been sent to your email/phone.', userId: user.id });
 };
 
 export const verifyLogin = async (c: Context) => {
@@ -571,19 +576,21 @@ export const verifyLogin = async (c: Context) => {
     return c.json({ error: 'User not found' }, 404);
   }
 
-  const storedOtp = await Otp.findOne({
-    userId: user._id,
-  });
+  if (!TEST_ENV) {
+    const storedOtp = await Otp.findOne({
+      userId: user._id,
+    });
 
-  if (!storedOtp || storedOtp.code !== otp || storedOtp.expiresAt < new Date()) {
-    if (storedOtp && storedOtp.expiresAt < new Date()) {
-      await Otp.deleteOne({ _id: storedOtp?._id });
+    if (!storedOtp || storedOtp.code !== otp || storedOtp.expiresAt < new Date()) {
+      if (storedOtp && storedOtp.expiresAt < new Date()) {
+        await Otp.deleteOne({ _id: storedOtp?._id });
+      }
+
+      return c.json({ error: 'Invalid or expired OTP' }, 400);
     }
 
-    return c.json({ error: 'Invalid or expired OTP' }, 400);
+    await Otp.deleteOne({ _id: storedOtp?._id });
   }
-
-  await Otp.deleteOne({ _id: storedOtp?._id });
 
   const secret = process.env.JWT_SECRET || 'your-secret-key';
   const accessToken = await sign({ userId: user._id, exp: Math.floor(Date.now() / 1000) + (60 * 15) }, secret);

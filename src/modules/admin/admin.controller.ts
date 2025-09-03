@@ -38,6 +38,8 @@ import { adminInviteEmail } from '../../templates/admin-invite';
 import { nanoid } from 'nanoid';
 import SystemSetting from '../../models/SystemSetting';
 
+const TEST_ENV: boolean = process.env.CURRENT_ENVIRONMENT === 'DEVELOPMENT';
+
 const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
   let binary = '';
   const bytes = new Uint8Array(buffer);
@@ -190,6 +192,8 @@ export const adminRegister = async (c: Context) => {
       email,
       secondaryEmail,
       passwordHash,
+      isEmailVerified: TEST_ENV ? true : false,
+      isPhoneNumberVerified: TEST_ENV ? true : false,
     });
 
     const { passwordHash: _, ...adminData } = newAdmin.toObject();
@@ -243,13 +247,15 @@ export const adminVerifyPhoneOtp = async (c: Context) => {
       return c.json({ error: 'Admin not found' }, 404);
     }
 
-    const otpRecord = await AdminOtp.findOne({ userId, code: otp });
+    if (!TEST_ENV) {
+      const otpRecord = await AdminOtp.findOne({ userId, code: otp });
 
-    if (!otpRecord || otpRecord.expiresAt < new Date()) {
-      return c.json({ error: 'Invalid or expired OTP' }, 400);
+      if (!otpRecord || otpRecord.expiresAt < new Date()) {
+        return c.json({ error: 'Invalid or expired OTP' }, 400);
+      }
+
+      await AdminOtp.deleteOne({ _id: otpRecord._id });
     }
-
-    await AdminOtp.deleteOne({ _id: otpRecord._id });
 
     admin.phoneNumber = phone;
     admin.isPhoneNumberVerified = true;
@@ -276,18 +282,40 @@ export const adminLogin = async (c: Context) => {
       return c.json({ error: 'Invalid credentials' }, 401);
     }
 
-    const otp = generateOtp(5);
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    if (!TEST_ENV) {
+      const otp = generateOtp(5);
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    await AdminOtp.findOneAndUpdate(
-      { userId: admin._id },
-      { code: otp, expiresAt },
-      { upsert: true, new: true }
-    );
+      await AdminOtp.findOneAndUpdate(
+        { userId: admin._id },
+        { code: otp, expiresAt },
+        { upsert: true, new: true }
+      );
 
-    await sendEmail(admin.email, 'LendBloc Admin Login Verification', otpVerificationEmail(otp, 10));
+      await sendEmail(admin.email, 'LendBloc Admin Login Verification', otpVerificationEmail(otp, 10));
 
-    return c.json({ message: 'OTP sent for login verification', userId: admin._id });
+      return c.json({ message: 'OTP sent for login verification', userId: admin._id });
+    }
+
+    // Development mode: bypass OTP and issue tokens immediately
+    const secret = process.env.JWT_SECRET || 'your-secret-key';
+    const accessToken = await sign({ adminId: admin._id, role: admin.role, exp: Math.floor(Date.now() / 1000) + (60 * 15) }, secret);
+    const refreshToken = await sign({ adminId: admin._id, role: admin.role, exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) }, secret);
+
+    await AdminRefreshToken.create({
+      userId: admin._id,
+      token: refreshToken,
+      expiresAt: new Date(Date.now() + (1000 * 60 * 60 * 24 * 3)),
+    });
+
+    setCookie(c, 'refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: 60 * 60 * 24 * 3, // 3 days
+    });
+
+    return c.json({ accessToken });
   } catch (error) {
     console.error('Error during admin login:', error);
     return c.json({ error: 'An unexpected error occurred' }, 500);
@@ -303,13 +331,15 @@ export const adminVerifyLogin = async (c: Context) => {
       return c.json({ error: 'Admin not found' }, 404);
     }
 
-    const otpRecord = await AdminOtp.findOne({ userId, code: otp });
+    if (!TEST_ENV) {
+      const otpRecord = await AdminOtp.findOne({ userId, code: otp });
 
-    if (!otpRecord || otpRecord.expiresAt < new Date()) {
-      return c.json({ error: 'Invalid or expired OTP' }, 400);
+      if (!otpRecord || otpRecord.expiresAt < new Date()) {
+        return c.json({ error: 'Invalid or expired OTP' }, 400);
+      }
+
+      await AdminOtp.deleteOne({ _id: otpRecord._id });
     }
-
-    await AdminOtp.deleteOne({ _id: otpRecord._id });
 
     const secret = process.env.JWT_SECRET || 'your-secret-key';
     const accessToken = await sign({ adminId: admin._id, role: admin.role, exp: Math.floor(Date.now() / 1000) + (60 * 15) }, secret);
