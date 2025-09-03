@@ -19,14 +19,22 @@ export const swapCrypto = async (c: Context) => {
       return c.json({ error: 'Invalid asset ID' }, 400);
     }
 
+    if (fromAsset.status !== 'LISTED' || toAsset.status !== 'LISTED') {
+      return c.json({ error: 'Selected assets are not available for exchange' }, 400);
+    }
+
     const fromWallet = await Wallet.findOne({ userId, assetId: fromAsset._id });
 
     if (!fromWallet || fromWallet.balance < amount) {
       return c.json({ error: 'Insufficient balance in source wallet' }, 400);
     }
 
-    // Simulate exchange rate (for simplicity, assume 1:1 for now)
+    // Simulate exchange rate by price ratio
     const convertedAmount = amount * (fromAsset.currentPrice / toAsset.currentPrice);
+
+    // Apply exchange fee (deducted from received amount)
+    const feePercent = toAsset.fees?.exchangeFeePercent ?? 0;
+    const netReceived = convertedAmount * (1 - feePercent / 100);
 
     // Deduct from source wallet
     fromWallet.balance -= amount;
@@ -39,16 +47,16 @@ export const swapCrypto = async (c: Context) => {
         userId,
         assetId: toAsset._id,
         address: `0x${[...Array(40)].map(() => Math.floor(Math.random() * 16).toString(16)).join('')}`,
-        balance: convertedAmount,
+        balance: netReceived,
         network: toAsset.network,
         encryptedMnemonic: fromWallet.encryptedMnemonic, // This is not secure, just for demonstration
       });
     } else {
-      toWallet.balance += convertedAmount;
+      toWallet.balance += netReceived;
       await toWallet.save();
     }
 
-    return c.json({ message: 'Swap successful', fromAsset, toAsset, amount, convertedAmount });
+    return c.json({ message: 'Swap successful', fromAsset, toAsset, amount, convertedAmount, feePercent, netReceived });
   } catch (error) {
     console.error('Error during crypto swap:', error);
     return c.json({ error: 'An unexpected error occurred' }, 500);

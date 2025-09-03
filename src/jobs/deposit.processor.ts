@@ -4,7 +4,6 @@ import Transaction from "../models/Transaction";
 import { depositQueue, type TatumIncomingPayload } from "./queue";
 import { confirmTransaction } from "../helpers/tatum/confirm";
 import { mapTatumChainToInternalNetwork, toWalletNetwork } from "../helpers/tatum/mapping";
-import { fetchErc20Metadata } from "../helpers/evm/erc20";
 import { relocateFundsToLiquidityWallet } from "../utils/funds";
 
 // Initialize processor
@@ -46,40 +45,23 @@ depositQueue.setProcessor(async (payload: TatumIncomingPayload) => {
 
   const isToken = subscriptionType === 'INCOMING_FUNGIBLE_TX' && !!contractAddress;
 
-  // If token, establish or create token Asset and a Wallet for it
+  // If token, establish or find Asset and ensure user Wallet exists (no asset auto-create)
   if (isToken) {
-    // Resolve/create Asset for token
-    let tokenAsset = await Asset.findOne({ tokenAddress: contractAddress, network: walletNet });
+    const tokenAsset = await Asset.findOne({ tokenAddress: contractAddress, network: walletNet });
 
     if (!tokenAsset) {
-      // Try to fetch token metadata for EVM chains
-      let symbol = `TKN`;
-      let decimals = 18;
-      try {
-        if (internalNet.startsWith('ETH') || internalNet.startsWith('BSC') || internalNet.startsWith('MATIC')) {
-          const meta = await fetchErc20Metadata({ tokenAddress: contractAddress!, internalNetwork: internalNet });
-          symbol = meta.symbol || symbol;
-          decimals = meta.decimals || decimals;
-        }
-      } catch (e) {
-        console.warn('Failed to fetch ERC-20 metadata; using defaults.', e);
-      }
-
-      tokenAsset = await Asset.create({
-        name: symbol,
-        symbol,
-        iconUrl: '',
-        currentPrice: 0,
-        marketCap: 0,
-        circulatingSupply: 0,
-        amountHeld: 0,
-        isLendable: true,
-        isCollateral: false,
+      // No Asset configured for this token: record pending transaction and exit
+      await Transaction.create({
+        user: baseWallet.userId,
+        type: 'deposit',
+        amount: amountNum,
+        asset: currency || 'UNKNOWN',
+        status: 'pending',
+        txHash: txId,
         network: walletNet,
-        kind: internalNet.startsWith('TRON') ? 'trc20' : 'erc20',
-        tokenAddress: contractAddress,
-        decimals,
+        contractAddress: contractAddress,
       });
+      return;
     }
 
     assetDoc = tokenAsset;
@@ -102,20 +84,24 @@ depositQueue.setProcessor(async (payload: TatumIncomingPayload) => {
     }
   }
 
-  // Credit wallet balance and asset aggregate
-  targetWallet.balance = (targetWallet.balance || 0) + amountNum;
+  // Apply receive fee when crediting user wallet
+  const receiveFeePercent = assetDoc?.fees?.receiveFeePercent ?? 0;
+  const netAmount = amountNum * (1 - receiveFeePercent / 100);
+
+  // Credit wallet balance and asset aggregate (net amount)
+  targetWallet.balance = (targetWallet.balance || 0) + netAmount;
   await targetWallet.save();
 
   if (assetDoc) {
-    assetDoc.amountHeld = (assetDoc.amountHeld || 0) + amountNum;
+    assetDoc.amountHeld = (assetDoc.amountHeld || 0) + netAmount;
     await assetDoc.save();
   }
 
-  // Record the transaction as confirmed
+  // Record the transaction as confirmed with net credited amount
   await Transaction.create({
     user: targetWallet.userId,
     type: 'deposit',
-    amount: amountNum,
+    amount: netAmount,
     asset: assetDoc ? assetDoc.symbol : currency,
     status: 'confirmed',
     txHash: txId,

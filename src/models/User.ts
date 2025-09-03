@@ -6,6 +6,11 @@ export enum AccountStatus {
   BLOCKED = 'BLOCKED',
 }
 
+export enum AccountType {
+  REG = 'REG',
+  PRO = 'PRO',
+}
+
 export interface IUser extends Document {
   title: string;
   fullName: string;
@@ -21,6 +26,7 @@ export interface IUser extends Document {
   allowPasswordReset: boolean;
   allowEmailChange: boolean;
   accountStatus: AccountStatus;
+  accountType: AccountType;
   blockedAt?: Date;
   blockedByAdminName?: string;
   createdAt: Date;
@@ -43,6 +49,7 @@ const UserSchema: Schema = new Schema(
     allowPasswordReset: { type: Boolean, default: false },
     allowEmailChange: { type: Boolean, default: false },
     accountStatus: { type: String, enum: Object.values(AccountStatus), default: AccountStatus.ACTIVE },
+    accountType: { type: String, enum: Object.values(AccountType), default: AccountType.REG },
     blockedAt: { type: Date },
     blockedByAdminName: { type: String },
   },

@@ -13,7 +13,8 @@ export interface ILoan extends Document {
   loanAssetId: mongoose.Types.ObjectId;
   loanAmount: number;
   ltv: number;
-  interestRate: number;
+  interestRate: number; // percent
+  termDays: 7 | 30 | 180 | 365;
   status: LoanStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -28,6 +29,7 @@ const LoanSchema: Schema = new Schema(
     loanAmount: { type: Number, required: true },
     ltv: { type: Number, required: true },
     interestRate: { type: Number, required: true },
+    termDays: { type: Number, enum: [7, 30, 180, 365], required: true },
     status: { type: String, enum: Object.values(LoanStatus), default: LoanStatus.ACTIVE },
   },
   { timestamps: true }

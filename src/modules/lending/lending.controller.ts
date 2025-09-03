@@ -3,11 +3,13 @@ import { z } from 'zod';
 import Loan, { LoanStatus } from '../../models/Loan';
 import Asset from '../../models/Asset';
 import Wallet from '../../models/Wallet';
+import User from '../../models/User';
+import { termKeyFromDays } from '../../helpers/assets/terms';
 import { createLoanSchema, repayLoanSchema } from './lending.validation';
 
 export const createLoan = async (c: Context) => {
   const userId = c.get('jwtPayload').userId;
-  const { assetId, amount, collateralAssetId, collateralAmount } = c.req.valid('json' as never) as z.infer<
+  const { assetId, amount, collateralAssetId, collateralAmount, termDays } = c.req.valid('json' as never) as z.infer<
     typeof createLoanSchema
   >;
 
@@ -17,6 +19,11 @@ export const createLoan = async (c: Context) => {
 
     if (!collateralAsset || !loanAsset) {
       return c.json({ error: 'Invalid asset ID' }, 400);
+    }
+
+    // Enforce that both assets are LISTED for lending operations
+    if (collateralAsset.status !== 'LISTED' || loanAsset.status !== 'LISTED') {
+      return c.json({ error: 'Selected assets are not available for lending' }, 400);
     }
 
     // Check if user has enough collateral in their wallet
@@ -29,6 +36,12 @@ export const createLoan = async (c: Context) => {
     // Calculate LTV (Loan-to-Value)
     const ltv = (amount * loanAsset.currentPrice) / (collateralAmount * collateralAsset.currentPrice);
 
+    // Resolve interest by account type and term from asset fees (percent)
+    const userDoc = await User.findById(userId).select('accountType');
+    const acctType = (userDoc?.accountType ?? 'REG') as 'REG' | 'PRO';
+    const tKey = termKeyFromDays(termDays as 7 | 30 | 180 | 365);
+    const interestRate = loanAsset.fees?.loanInterest?.[acctType]?.[tKey] ?? 0;
+
     // Create the loan
     const loan = await Loan.create({
       userId,
@@ -37,7 +50,8 @@ export const createLoan = async (c: Context) => {
       loanAssetId: loanAsset._id,
       loanAmount: amount,
       ltv,
-      interestRate: 0.05, // 5% interest rate
+      interestRate, // percent
+      termDays,
       status: LoanStatus.ACTIVE,
     });
 

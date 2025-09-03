@@ -17,6 +17,7 @@ import calculator from './src/modules/calculator/calculator.routes';
 import prices from './src/modules/prices/prices.routes';
 import dashboard from './src/modules/dashboard/dashboard.routes';
 import { adminChat } from './src/modules/adminChat/chat.routes';
+import adminAssets from './src/modules/adminAssets/assets.routes';
 import connectDB from './src/config/db';
 import { createBunWebSocket } from 'hono/bun'
 
@@ -54,6 +55,7 @@ app.route('/api/v1/notifications', notifications);
 app.route('/api/v1/admin/auth', adminRouter); // Admin Auth
 app.route('/api/v1/admin', admin);
 app.route('/api/v1/admin/chat', adminChat);
+app.route('/api/v1/admin/assets', adminAssets);
 app.route('/api/v1/webhooks', webhooks);
 app.route('/api/v1/referrals', referrals);
 app.route('/api/v1/calculator', calculator);
