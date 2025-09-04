@@ -102,7 +102,21 @@ export function setupDocs(app: Hono) {
           tags: ['Auth'],
           summary: 'Edit phone number',
           description: 'Updates phone number before verification completes.',
-          security: [{ BearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['userId', 'phone'],
+                  properties: {
+                    userId: { type: 'string', description: 'User ID (24-hex)' },
+                    phone: { type: 'string', description: 'E.164 phone, e.g. +15551234567' },
+                  },
+                },
+              },
+            },
+          },
           responses: { '200': { description: 'Phone updated' }, '404': { description: 'User not found' } },
         },
       },
@@ -194,8 +208,22 @@ export function setupDocs(app: Hono) {
         post: {
           tags: ['Auth'],
           summary: 'Logout user',
-          description: 'Clears refresh tokens; deletes cookie for web clients.',
+          description: 'Clears refresh tokens; deletes cookie for web clients. Requires Bearer token.',
           security: [{ BearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['clientDevice'],
+                  properties: {
+                    clientDevice: { type: 'string', enum: ['web', 'mobile'], description: 'Client type affects cookie behavior' },
+                  },
+                },
+              },
+            },
+          },
           responses: { '200': { description: 'Logged out' }, '401': { description: 'Unauthorized' } },
         },
       },
