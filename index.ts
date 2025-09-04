@@ -20,6 +20,7 @@ import { adminChat } from './src/modules/adminChat/chat.routes';
 import adminAssets from './src/modules/adminAssets/assets.routes';
 import connectDB from './src/config/db';
 import { createBunWebSocket } from 'hono/bun'
+import { setupDocs } from './src/docs/index'
 
 connectDB();
 
@@ -44,6 +45,9 @@ app.use(cors({
 app.get("/", (c) => {
     return c.text("Lendbloc API is Live 🚀", 200)
 })
+
+// Swagger docs
+setupDocs(app as any)
 
 app.route('/api/v1/auth', auth);
 app.route('/api/v1/users', users);
