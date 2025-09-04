@@ -12,6 +12,7 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@hono/swagger-ui": "^0.5.2",
     "@hono/zod-openapi": "^1.0.2",
     "@hono/zod-validator": "^0.7.2",
     "@noble/secp256k1": "^2.3.0",

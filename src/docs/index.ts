@@ -230,7 +230,7 @@ export function setupDocs(app: Hono) {
           tags: ['Auth'],
           summary: 'Get KYC status',
           description: 'Fetches latest KYC status; can poll to see updates from Shufti.',
-responses: { '200': { description: 'Current KYC status returned', content: { 'application/json': { example: { status: 'APPROVED', verificationDetails: { event: 'verification.accepted' } } } } } },
+          responses: { '200': { description: 'Current KYC status returned', content: { 'application/json': { example: { status: 'APPROVED', verificationDetails: { event: 'verification.accepted' } } } } } }
         },
       },
 
@@ -302,15 +302,15 @@ responses: { '200': { description: 'Current KYC status returned', content: { 'ap
           summary: 'Get user profile',
           description: 'Returns basic profile data for the authenticated user.',
           security: [{ BearerAuth: [] }],
-responses: { '200': { description: 'Profile returned', content: { 'application/json': { example: { _id: '65a6f7e7f7f7f7f7f7f7f7f7', fullName: 'John Doe', email: 'john@example.com', phoneNumber: '+15551234567', isKycVerified: true, accountStatus: 'ACTIVE' } } } }, '401': { description: 'Unauthorized' } },
+          responses: { '200': { description: 'Profile returned', content: { 'application/json': { example: { _id: '65a6f7e7f7f7f7f7f7f7f7f7', fullName: 'John Doe', email: 'john@example.com', phoneNumber: '+15551234567', isKycVerified: true, accountStatus: 'ACTIVE' } } } }, '401': { description: 'Unauthorized' } }
         },
         put: {
           tags: ['Users'],
-summary: 'Update user profile',
+          summary: 'Update user profile',
           description: 'Updates basic profile fields for the authenticated user (partial updates allowed).',
           security: [{ BearerAuth: [] }],
           requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { title: { type: 'string' }, fullName: { type: 'string' }, dateOfBirth: { type: 'string', description: 'DD/MM/YYYY' }, phoneNumber: { type: 'string' } } } } } },
-responses: { '200': { description: 'Profile updated', content: { 'application/json': { example: { message: 'Profile updated successfully', user: { _id: '65a6f7e7f7f7f7f7f7f7f7f7', fullName: 'John Doe', title: 'Mr', dateOfBirth: '01/01/1990' } } } } }, '401': { description: 'Unauthorized' } },
+          responses: { '200': { description: 'Profile updated', content: { 'application/json': { example: { message: 'Profile updated successfully', user: { _id: '65a6f7e7f7f7f7f7f7f7f7f7', fullName: 'John Doe', title: 'Mr', dateOfBirth: '01/01/1990' } } } } }, '401': { description: 'Unauthorized' } }
         },
       },
       '/api/v1/users/request-password-change': {
@@ -381,7 +381,7 @@ summary: 'Update email (after validation)',
           summary: 'List wallets for user',
           description: 'Lists all wallets owned by the authenticated user.',
           security: [{ BearerAuth: [] }],
-responses: { '200': { description: 'Wallet list', content: { 'application/json': { example: [{ _id: '65a6f7e7f7f7f7f7f7f7f7f7', assetId: '65a6f7e7f7f7f7f7f7f7f7f6', address: '0xabc...', balance: 0.5, network: 'ETH' }] } } }, '401': { description: 'Unauthorized' } },
+          responses: { '200': { description: 'Wallet list', content: { 'application/json': { example: [{ _id: '65a6f7e7f7f7f7f7f7f7f7f7', assetId: '65a6f7e7f7f7f7f7f7f7f7f6', address: '0xabc...', balance: 0.5, network: 'ETH' }] } } }, '401': { description: 'Unauthorized' } }
         },
         post: {
           tags: ['Wallets'],

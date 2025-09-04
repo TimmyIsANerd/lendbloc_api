@@ -1,6 +1,6 @@
 import { type Context } from 'hono';
 import User from '../../models/User'; // Import the User model
-import Wallet from '../../models/Wallet'; // Import the Wallet model
+import { enqueueDepositJob } from '../../jobs/deposit.processor';
 
 export const shuftiRedirect = async (c: Context) => {
     // This redirect is for the user's browser after verification, not the webhook callback.
@@ -91,7 +91,6 @@ export const shuftiCallback = async (c: Context) => {
     }
 }
 
-import { enqueueDepositJob } from '../../jobs/deposit.processor';
 
 export const tatumCallback = async (c: Context) => {
     try {
