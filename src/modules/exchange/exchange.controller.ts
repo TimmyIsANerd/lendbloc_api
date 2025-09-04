@@ -32,12 +32,22 @@ export const swapCrypto = async (c: Context) => {
     // Simulate exchange rate by price ratio
     const convertedAmount = amount * (fromAsset.currentPrice / toAsset.currentPrice);
 
-    // Apply exchange fee (deducted from received amount)
-    const feePercent = toAsset.fees?.exchangeFeePercent ?? 0;
-    const netReceived = convertedAmount * (1 - feePercent / 100);
+    // Apply exchange fees: from side and to side
+    const fromFeePercent = (fromAsset.fees?.exchangeFeePercentFrom ?? fromAsset.fees?.exchangeFeePercent ?? 0);
+    const toFeePercent = (toAsset.fees?.exchangeFeePercentTo ?? toAsset.fees?.exchangeFeePercent ?? 0);
 
-    // Deduct from source wallet
-    fromWallet.balance -= amount;
+    const fromFeeAmount = amount * (fromFeePercent / 100);
+    const toFeeAmount = convertedAmount * (toFeePercent / 100);
+    const netReceived = convertedAmount - toFeeAmount;
+
+    // Ensure source wallet has enough for amount + from fee
+    const totalDebit = amount + fromFeeAmount;
+    if (fromWallet.balance < totalDebit) {
+      return c.json({ error: 'Insufficient balance in source wallet to cover amount and fee' }, 400);
+    }
+
+    // Deduct from source wallet: amount + fee
+    fromWallet.balance -= totalDebit;
     await fromWallet.save();
 
     // Add to destination wallet (create if not exists)
@@ -56,7 +66,7 @@ export const swapCrypto = async (c: Context) => {
       await toWallet.save();
     }
 
-    return c.json({ message: 'Swap successful', fromAsset, toAsset, amount, convertedAmount, feePercent, netReceived });
+    return c.json({ message: 'Swap successful', fromAsset, toAsset, amount, convertedAmount, fromFeePercent, toFeePercent, fromFeeAmount, toFeeAmount, netReceived });
   } catch (error) {
     console.error('Error during crypto swap:', error);
     return c.json({ error: 'An unexpected error occurred' }, 500);

@@ -113,7 +113,10 @@ const AssetSchema: Schema = new Schema(
           },
           sendFeePercent: { type: Number, default: 0 },
           receiveFeePercent: { type: Number, default: 0 },
-          exchangeFeePercent: { type: Number, default: 0 },
+          exchangeFeePercentFrom: { type: Number, default: 0 },
+          exchangeFeePercentTo: { type: Number, default: 0 },
+          // Deprecated: kept for backward-compat reading/fallback
+          exchangeFeePercent: { type: Number },
           referralFeePercent: { type: Number, default: 0 },
         },
         { _id: false }
@@ -124,7 +127,8 @@ const AssetSchema: Schema = new Schema(
         savingsInterest: defaultTermInterest,
         sendFeePercent: 0,
         receiveFeePercent: 0,
-        exchangeFeePercent: 0,
+        exchangeFeePercentFrom: 0,
+        exchangeFeePercentTo: 0,
         referralFeePercent: 0,
       },
     },

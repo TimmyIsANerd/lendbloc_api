@@ -17,7 +17,10 @@ export const assetFeesSchema = z.object({
   savingsInterest: termInterestSchema,
   sendFeePercent: z.number().min(0),
   receiveFeePercent: z.number().min(0),
-  exchangeFeePercent: z.number().min(0),
+  exchangeFeePercentFrom: z.number().min(0).default(0),
+  exchangeFeePercentTo: z.number().min(0).default(0),
+  // optional legacy single side fee; if provided, controller maps it to both
+  exchangeFeePercent: z.number().min(0).optional(),
   referralFeePercent: z.number().min(0),
 });
 

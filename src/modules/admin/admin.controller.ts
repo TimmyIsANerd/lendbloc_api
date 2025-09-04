@@ -310,7 +310,7 @@ export const adminLogin = async (c: Context) => {
 
     setCookie(c, 'refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: !TEST_ENV,
       sameSite: 'Strict',
       maxAge: 60 * 60 * 24 * 3, // 3 days
     });
@@ -414,7 +414,7 @@ export const adminRefreshToken = async (c: Context) => {
 
     setCookie(c, 'refreshToken', newRefreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: !TEST_ENV,
       sameSite: 'Strict',
       maxAge: 60 * 60 * 24 * 3, // 3 days
     });

@@ -11,6 +11,16 @@ export const createAsset = async (c: Context) => {
     // Normalize symbol upper-case for consistency
     data.symbol = data.symbol.toUpperCase();
 
+    // Map legacy single exchangeFeePercent to split fees if needed
+    if (data.fees) {
+      const f = data.fees;
+      if ((f.exchangeFeePercentFrom === undefined || f.exchangeFeePercentTo === undefined) && f.exchangeFeePercent !== undefined) {
+        f.exchangeFeePercentFrom = f.exchangeFeePercentFrom ?? f.exchangeFeePercent;
+        f.exchangeFeePercentTo = f.exchangeFeePercentTo ?? f.exchangeFeePercent;
+        delete f.exchangeFeePercent;
+      }
+    }
+
     const asset = await Asset.create(data);
     return c.json({ message: 'Asset created', asset }, 201);
   } catch (error: any) {
@@ -72,6 +82,16 @@ export const updateAsset = async (c: Context) => {
   const payload = c.req.valid('json' as never) as z.infer<typeof updateAssetSchema>;
   const data: any = { ...payload };
   if (data.symbol) data.symbol = data.symbol.toUpperCase();
+
+  // Map legacy single exchangeFeePercent to split fees if needed
+  if (data.fees) {
+    const f = data.fees;
+    if ((f.exchangeFeePercentFrom === undefined || f.exchangeFeePercentTo === undefined) && f.exchangeFeePercent !== undefined) {
+      f.exchangeFeePercentFrom = f.exchangeFeePercentFrom ?? f.exchangeFeePercent;
+      f.exchangeFeePercentTo = f.exchangeFeePercentTo ?? f.exchangeFeePercent;
+      delete f.exchangeFeePercent;
+    }
+  }
 
   try {
     const asset = await Asset.findByIdAndUpdate(id, data, { new: true });
