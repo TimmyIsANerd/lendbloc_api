@@ -13,7 +13,8 @@ export function setupDocs(app: Hono) {
   const doc = new OpenAPIHono()
 
   // Basic API info and Security
-  doc.doc('/ignore-docs', {
+  // Serve the generated OpenAPI JSON under /api/v1/docs (mounted via app.route below)
+  doc.doc('/docs', {
     openapi: '3.0.0',
     info: {
       title: 'LendBloc API',
@@ -291,9 +292,8 @@ export function setupDocs(app: Hono) {
     () => {}
   )
 
-  // Build schema and mount routes on main app
-  const schema = doc.getOpenAPISchema()
-  app.get('/api/v1/docs', (c) => c.json(schema))
+  // Mount the OpenAPI app under /api/v1 and expose Swagger UI
+  app.route('/api/v1', doc)
   app.get('/api/v1/docs/ui', swaggerUI({ url: '/api/v1/docs' }))
 }
 
