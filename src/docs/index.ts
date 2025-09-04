@@ -734,10 +734,6 @@ put: {
           security: [{ BearerAuth: [] }],
           requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { name: { type: 'string' }, symbol: { type: 'string' }, iconUrl: { type: 'string' }, currentPrice: { type: 'number' }, marketCap: { type: 'number' }, circulatingSupply: { type: 'number' }, amountHeld: { type: 'number' }, isLendable: { type: 'boolean' }, isCollateral: { type: 'boolean' }, network: { type: 'string', enum: ['ETH','BSC','TRON','BTC','LTC'] }, kind: { type: 'string', enum: ['native','erc20','trc20'] }, tokenAddress: { type: 'string' }, decimals: { type: 'number' }, status: { type: 'string', enum: ['LISTED','PENDING_VOTES','DELISTED'] }, fees: { type: 'object' } } } } } },
           responses: { '200': { description: 'Asset updated' }, '404': { description: 'Asset not found' }, '409': { description: 'Duplicate' } },
-            '200': { description: 'Asset updated' },
-            '404': { description: 'Asset not found' },
-            '409': { description: 'Duplicate' },
-          },
         },
       },
       '/api/v1/admin/assets/{id}/list': {
@@ -865,20 +861,6 @@ description: 'Returns an estimated profit calculation based on referral inputs.'
           description: 'Aggregated portfolio, loans, savings, and recent activity for the user.',
           security: [{ BearerAuth: [] }],
           responses: { '200': { description: 'Dashboard data' } },
-        },
-      },
-
-      // ----- Admin Assets (existing) -----
-      '/api/v1/admin/assets': {
-        post: {
-          tags: ['Admin Assets'],
-          summary: 'Delist an asset',
-          description: 'Set status to DELISTED.',
-          security: [{ BearerAuth: [] }],
-          responses: {
-            '200': { description: 'Asset delisted' },
-            '404': { description: 'Asset not found' },
-          },
         },
       },
     },
