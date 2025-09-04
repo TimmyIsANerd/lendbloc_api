@@ -93,8 +93,7 @@ export function setupDocs(app: Hono) {
         post: {
           tags: ['Auth'],
           summary: 'Verify phone with OTP',
-          description: 'Confirms a user\'s phone using the OTP.
-In DEVELOPMENT (via CURRENT_ENVIRONMENT), OTP checks are bypassed.',
+          description: 'Confirms a user\'s phone using the OTP. In DEVELOPMENT (via CURRENT_ENVIRONMENT), OTP checks are bypassed.',
           responses: { '200': { description: 'Phone verified' }, '400': { description: 'Invalid/expired OTP' }, '404': { description: 'User not found' } },
         },
       },
