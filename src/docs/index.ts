@@ -64,7 +64,7 @@ export function setupDocs(app: Hono) {
             },
           },
           responses: {
-            '200': { description: 'User registered successfully' },
+'200': { description: 'User registered successfully', content: { 'application/json': { example: { message: 'User registered successfully', userId: '65a6f7e7f7f7f7f7f7f7f7f7' } } } },
             '409': { description: 'User already exists' },
           },
         },
@@ -91,7 +91,7 @@ export function setupDocs(app: Hono) {
             },
           },
           responses: {
-            '200': { description: 'OTP sent or bypassed (DEV mode)' },
+'200': { description: 'OTP sent or bypassed (DEV mode)', content: { 'application/json': { example: { message: 'An OTP has been sent to your email/phone.', userId: '65a6f7e7f7f7f7f7f7f7f7f7' } } } },
             '401': { description: 'Invalid credentials or user unverified' },
           },
         },
@@ -118,7 +118,7 @@ export function setupDocs(app: Hono) {
             },
           },
           responses: {
-            '200': { description: 'Access token (and refresh token via cookie for web clients)' },
+'200': { description: 'Access token (and refresh token via cookie for web clients)', content: { 'application/json': { example: { accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...', refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' } } } },
 '400': { description: 'Invalid or expired OTP (non-dev)' },
           },
         },
@@ -230,7 +230,7 @@ export function setupDocs(app: Hono) {
           tags: ['Auth'],
           summary: 'Get KYC status',
           description: 'Fetches latest KYC status; can poll to see updates from Shufti.',
-          responses: { '200': { description: 'Current KYC status returned' } },
+responses: { '200': { description: 'Current KYC status returned', content: { 'application/json': { example: { status: 'APPROVED', verificationDetails: { event: 'verification.accepted' } } } } } },
         },
       },
 
@@ -302,7 +302,7 @@ export function setupDocs(app: Hono) {
           summary: 'Get user profile',
           description: 'Returns basic profile data for the authenticated user.',
           security: [{ BearerAuth: [] }],
-          responses: { '200': { description: 'Profile returned' }, '401': { description: 'Unauthorized' } },
+responses: { '200': { description: 'Profile returned', content: { 'application/json': { example: { _id: '65a6f7e7f7f7f7f7f7f7f7f7', fullName: 'John Doe', email: 'john@example.com', phoneNumber: '+15551234567', isKycVerified: true, accountStatus: 'ACTIVE' } } } }, '401': { description: 'Unauthorized' } },
         },
         put: {
           tags: ['Users'],
@@ -310,7 +310,7 @@ summary: 'Update user profile',
           description: 'Updates basic profile fields for the authenticated user (partial updates allowed).',
           security: [{ BearerAuth: [] }],
           requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { title: { type: 'string' }, fullName: { type: 'string' }, dateOfBirth: { type: 'string', description: 'DD/MM/YYYY' }, phoneNumber: { type: 'string' } } } } } },
-          responses: { '200': { description: 'Profile updated' }, '401': { description: 'Unauthorized' } },
+responses: { '200': { description: 'Profile updated', content: { 'application/json': { example: { message: 'Profile updated successfully', user: { _id: '65a6f7e7f7f7f7f7f7f7f7f7', fullName: 'John Doe', title: 'Mr', dateOfBirth: '01/01/1990' } } } } }, '401': { description: 'Unauthorized' } },
         },
       },
       '/api/v1/users/request-password-change': {
@@ -381,7 +381,7 @@ summary: 'Update email (after validation)',
           summary: 'List wallets for user',
           description: 'Lists all wallets owned by the authenticated user.',
           security: [{ BearerAuth: [] }],
-          responses: { '200': { description: 'Wallet list' }, '401': { description: 'Unauthorized' } },
+responses: { '200': { description: 'Wallet list', content: { 'application/json': { example: [{ _id: '65a6f7e7f7f7f7f7f7f7f7f7', assetId: '65a6f7e7f7f7f7f7f7f7f7f6', address: '0xabc...', balance: 0.5, network: 'ETH' }] } } }, '401': { description: 'Unauthorized' } },
         },
         post: {
           tags: ['Wallets'],
@@ -389,7 +389,7 @@ summary: 'Create a wallet',
           description: 'Creates a new wallet for the specified asset symbol if not already present.',
           security: [{ BearerAuth: [] }],
           requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['assetSymbol'], properties: { assetSymbol: { type: 'string', description: 'Asset symbol, e.g., BTC, ETH' } } } } } },
-          responses: { '201': { description: 'Wallet created' }, '409': { description: 'Wallet already exists' } },
+responses: { '201': { description: 'Wallet created', content: { 'application/json': { example: { message: 'Wallet created successfully', wallet: { _id: '65a6f7e7f7f7f7f7f7f7f7f7', assetId: '65a6f7e7f7f7f7f7f7f7f7f6', address: 'btc_address_65a6...', balance: 0 } } } } }, '409': { description: 'Wallet already exists' } },
         },
       },
       '/api/v1/wallets/{id}': {
@@ -398,7 +398,7 @@ summary: 'Create a wallet',
           summary: 'Get wallet details',
           description: 'Returns wallet details for a given wallet ID belonging to the authenticated user.',
           security: [{ BearerAuth: [] }],
-          responses: { '200': { description: 'Wallet details' }, '404': { description: 'Wallet not found' } },
+responses: { '200': { description: 'Asset listed', content: { 'application/json': { example: { message: 'Asset listed', asset: { _id: '65a...', status: 'LISTED' } } } } }, '404': { description: 'Asset not found' },
         },
       },
       '/api/v1/wallets/address/{walletAddress}': {
@@ -421,7 +421,7 @@ description:
           security: [{ BearerAuth: [] }],
           requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['assetId','amount','collateralAssetId','collateralAmount','termDays'], properties: { assetId: { type: 'string' }, amount: { type: 'number' }, collateralAssetId: { type: 'string' }, collateralAmount: { type: 'number' }, termDays: { type: 'integer', enum: [7,30,180,365] } } } } } },
           responses: {
-            '200': { description: 'Loan created' },
+'200': { description: 'Loan created', content: { 'application/json': { example: { message: 'Loan created successfully', loan: { _id: '65a...', userId: '65a...', loanAssetId: '65b...', loanAmount: 100, collateralAssetId: '65c...', collateralAmount: 0.01, ltv: 0.5, interestRate: 5, termDays: 30, status: 'ACTIVE' } } } } },
 '400': { description: 'Invalid asset or insufficient collateral' },
           },
         },
@@ -433,7 +433,7 @@ description:
 description: 'Repays principal for an active loan. If fully repaid, collateral is returned.',
           security: [{ BearerAuth: [] }],
           requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['amount'], properties: { amount: { type: 'number' } } } } } },
-          responses: { '200': { description: 'Loan repaid' }, '404': { description: 'Loan not found' }, '400': { description: 'Invalid amount' } },
+responses: { '200': { description: 'Loan repaid', content: { 'application/json': { example: { message: 'Loan repaid successfully', loan: { _id: '65a...', loanAmount: 50, status: 'ACTIVE' } } } } }, '404': { description: 'Loan not found' }, '400': { description: 'Invalid amount' } },
         },
       },
       '/api/v1/savings': {
@@ -445,7 +445,7 @@ description:
           security: [{ BearerAuth: [] }],
           requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['assetId','amount','termDays'], properties: { assetId: { type: 'string' }, amount: { type: 'number' }, termDays: { type: 'integer', enum: [7,30,180,365] } } } } } },
           responses: {
-            '200': { description: 'Savings account created' },
+'200': { description: 'Savings account created', content: { 'application/json': { example: { message: 'Savings account created successfully', savingsAccount: { _id: '65a...', assetId: '65b...', balance: 1.5, apy: 6, termDays: 30, lockStartAt: '2025-09-01T00:00:00Z', lockEndAt: '2025-10-01T00:00:00Z' } } } } },
 '400': { description: 'Asset not found/available or insufficient wallet balance' },
           },
         },
@@ -456,7 +456,7 @@ description:
           summary: 'Deposit into savings',
           description: 'Transfers funds from wallet to savings account.',
           security: [{ BearerAuth: [] }],
-          responses: { '200': { description: 'Deposit successful' }, '404': { description: 'Savings account not found' }, '400': { description: 'Insufficient balance' } },
+responses: { '200': { description: 'Deposit successful', content: { 'application/json': { example: { message: 'Deposit successful', savingsAccount: { _id: '65a...', balance: 2.5 } } } } }, '404': { description: 'Savings account not found' }, '400': { description: 'Insufficient balance' } },
         },
       },
       '/api/v1/savings/{id}/withdraw': {
@@ -465,7 +465,7 @@ description:
           summary: 'Withdraw from savings',
           description: 'Transfers funds from savings back to wallet. Locked accounts cannot withdraw until lockEndAt.',
           security: [{ BearerAuth: [] }],
-          responses: { '200': { description: 'Withdrawal successful' }, '404': { description: 'Savings account not found' }, '400': { description: 'Insufficient balance or locked' } },
+responses: { '200': { description: 'Withdrawal successful', content: { 'application/json': { example: { message: 'Withdrawal successful', savingsAccount: { _id: '65a...', balance: 1.0 } } } } }, '404': { description: 'Savings account not found' }, '400': { description: 'Insufficient balance or locked' } },
         },
       },
       '/api/v1/exchange/swap': {
@@ -477,7 +477,7 @@ description:
           security: [{ BearerAuth: [] }],
           requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['fromAssetId','toAssetId','amount'], properties: { fromAssetId: { type: 'string' }, toAssetId: { type: 'string' }, amount: { type: 'number' } } } } } },
           responses: {
-            '200': { description: 'Swap successful' },
+'200': { description: 'Swap successful', content: { 'application/json': { example: { message: 'Swap successful', amount: 1, convertedAmount: 2000, fromFeePercent: 0.2, toFeePercent: 0.3, fromFeeAmount: 0.002, toFeeAmount: 6, netReceived: 1994 } } } },
 '400': { description: 'Asset invalid/unavailable or insufficient balance' },
           },
         },
@@ -670,7 +670,7 @@ description: 'Sends an admin invitation email with a token. Requires SUPER_ADMIN
           summary: 'List loans',
           description: 'Lists all loans in the system.',
           security: [{ BearerAuth: [] }],
-          responses: { '200': { description: 'Loans list' } },
+responses: { '200': { description: 'List of assets', content: { 'application/json': { example: { data: [{ _id: '65a...', symbol: 'BTC', network: 'ETH', status: 'LISTED' }], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } } } } },
         },
       },
       '/api/v1/admin/savings': {
@@ -722,8 +722,8 @@ description:
           summary: 'Get asset by ID',
           description: 'Fetch a single asset.',
           security: [{ BearerAuth: [] }],
-          responses: {
-            '200': { description: 'Asset' },
+responses: {
+            '200': { description: 'Asset', content: { 'application/json': { example: { _id: '65a...', symbol: 'ETH', network: 'ETH', status: 'LISTED' } } } },
             '404': { description: 'Asset not found' },
           },
         },
@@ -733,7 +733,7 @@ put: {
           description: 'Update asset fields, including fees and status. Partial updates allowed.',
           security: [{ BearerAuth: [] }],
           requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { name: { type: 'string' }, symbol: { type: 'string' }, iconUrl: { type: 'string' }, currentPrice: { type: 'number' }, marketCap: { type: 'number' }, circulatingSupply: { type: 'number' }, amountHeld: { type: 'number' }, isLendable: { type: 'boolean' }, isCollateral: { type: 'boolean' }, network: { type: 'string', enum: ['ETH','BSC','TRON','BTC','LTC'] }, kind: { type: 'string', enum: ['native','erc20','trc20'] }, tokenAddress: { type: 'string' }, decimals: { type: 'number' }, status: { type: 'string', enum: ['LISTED','PENDING_VOTES','DELISTED'] }, fees: { type: 'object' } } } } } },
-          responses: { '200': { description: 'Asset updated' }, '404': { description: 'Asset not found' }, '409': { description: 'Duplicate' } },
+responses: { '200': { description: 'Asset updated', content: { 'application/json': { example: { message: 'Asset updated', asset: { _id: '65a...', symbol: 'USDT', network: 'ETH' } } } } }, '404': { description: 'Asset not found' }, '409': { description: 'Duplicate' } },
         },
       },
       '/api/v1/admin/assets/{id}/list': {
@@ -863,7 +863,7 @@ description: 'Returns an estimated profit calculation based on referral inputs.'
           responses: { '200': { description: 'Dashboard data' } },
         },
       },
-    },
+    }
   }
 
   // Serve the OpenAPI JSON
