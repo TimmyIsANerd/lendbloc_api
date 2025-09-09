@@ -111,3 +111,10 @@ To get started with the LendBloc API, follow these steps:
     ```
 
 This will start the development server, and you can now make requests to the API endpoints.
+
+## Seeded users (development)
+
+The seed script creates the following test user accounts you can use to log in:
+
+- john@example.com / User@12345
+- jane@example.com / User@12345

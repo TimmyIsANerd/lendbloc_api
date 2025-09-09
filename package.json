@@ -49,6 +49,8 @@
   },
   "scripts": {
     "start": "bun run --watch index.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "seed": "bun run seeds/seed.ts",
+    "seed:drop": "bun run seeds/drop.ts"
   }
 }
