@@ -1,6 +1,7 @@
 import Wallet from "../models/Wallet";
 import Asset from "../models/Asset";
 import Transaction from "../models/Transaction";
+import UserBalance from "../models/UserBalance";
 import { depositQueue, type TatumIncomingPayload } from "./queue";
 import { confirmTransaction } from "../helpers/tatum/confirm";
 import { mapTatumChainToInternalNetwork, toWalletNetwork } from "../helpers/tatum/mapping";
@@ -41,12 +42,11 @@ depositQueue.setProcessor(async (payload: TatumIncomingPayload) => {
   const internalNet = mapTatumChainToInternalNetwork(chain);
   const walletNet = toWalletNetwork(internalNet);
 
-  let targetWallet = baseWallet;
   let assetDoc = await Asset.findById(baseWallet.assetId);
 
   const isToken = subscriptionType === 'INCOMING_FUNGIBLE_TX' && !!contractAddress;
 
-  // If token, establish or find Asset and ensure user Wallet exists (no asset auto-create)
+  // If token, resolve Asset from configured token list (do not create per-token wallets)
   if (isToken) {
     const tokenAsset = await Asset.findOne({ tokenAddress: contractAddress, network: walletNet });
 
@@ -66,38 +66,30 @@ depositQueue.setProcessor(async (payload: TatumIncomingPayload) => {
     }
 
     assetDoc = tokenAsset;
-
-    // Ensure a wallet exists tied to this token asset for the same user
-    const existingTokenWallet = await Wallet.findOne({ userId: baseWallet.userId, assetId: tokenAsset._id });
-    if (!existingTokenWallet) {
-      const created = await Wallet.create({
-        userId: baseWallet.userId,
-        assetId: tokenAsset._id,
-        address: baseWallet.address,
-        balance: 0,
-        encryptedMnemonic: baseWallet.encryptedMnemonic,
-        network: walletNet,
-        isLiquidityWallet: false,
-      });
-      targetWallet = created;
-    } else {
-      targetWallet = existingTokenWallet;
-    }
   }
 
-  // Apply receive fee when crediting user wallet by account type
+  // Apply receive fee when crediting user balance by account type
   let receiveFeePercent = 0;
   try {
+    // Lazy import User to avoid import cycles
+    const { default: User, AccountType } = await import("../models/User");
     const user = await User.findById(baseWallet.userId).select('accountType');
-    const acct: AccountType = user?.accountType || AccountType.REG;
+    const acct = user?.accountType || AccountType.REG;
+    // @ts-ignore
     receiveFeePercent = Number(assetDoc?.fees?.receiveFeePercent?.[acct] ?? 0);
   } catch {}
   const netAmount = amountNum * (1 - receiveFeePercent / 100);
 
-  // Credit wallet balance and asset aggregate (net amount)
-  targetWallet.balance = (targetWallet.balance || 0) + netAmount;
-  await targetWallet.save();
+  // Credit user balance for the resolved asset
+  if (assetDoc) {
+    await UserBalance.findOneAndUpdate(
+      { userId: baseWallet.userId, assetId: assetDoc._id },
+      { $inc: { balance: netAmount } },
+      { upsert: true, new: true }
+    );
+  }
 
+  // Update asset aggregate (net amount)
   if (assetDoc) {
     assetDoc.amountHeld = (assetDoc.amountHeld || 0) + netAmount;
     await assetDoc.save();
@@ -105,7 +97,7 @@ depositQueue.setProcessor(async (payload: TatumIncomingPayload) => {
 
   // Record the transaction as confirmed with net credited amount
   await Transaction.create({
-    user: targetWallet.userId,
+    user: baseWallet.userId,
     type: 'deposit',
     amount: netAmount,
     asset: assetDoc ? assetDoc.symbol : currency,
@@ -115,18 +107,23 @@ depositQueue.setProcessor(async (payload: TatumIncomingPayload) => {
     contractAddress: isToken ? contractAddress : undefined,
   });
 
-  // Trigger relocation asynchronously (we are already async)
+  // Trigger relocation asynchronously (we are already async) from base wallet
   try {
     if (isToken) {
       const kind = internalNet.startsWith('TRON') ? 'trc20' : 'erc20';
-      await relocateFundsToLiquidityWallet(String(targetWallet._id), {
+      await relocateFundsToLiquidityWallet(String(baseWallet._id), {
         amount: amountNum,
         kind,
         tokenAddress: contractAddress!,
         decimals: assetDoc?.decimals,
       });
     } else {
-      await relocateFundsToLiquidityWallet(String(targetWallet._id), amountNum);
+      await relocateFundsToLiquidityWallet(String(baseWallet._id), amountNum);
+    }
+  } catch (e) {
+    console.error('Relocation failed for tx:', txId, e);
+  }
+});
     }
   } catch (e) {
     console.error('Relocation failed for tx:', txId, e);

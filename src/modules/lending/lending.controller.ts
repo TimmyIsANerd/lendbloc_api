@@ -2,8 +2,8 @@ import { type Context } from 'hono';
 import { z } from 'zod';
 import Loan, { LoanStatus } from '../../models/Loan';
 import Asset from '../../models/Asset';
-import Wallet from '../../models/Wallet';
 import User from '../../models/User';
+import UserBalance from '../../models/UserBalance';
 import { termKeyFromDays } from '../../helpers/assets/terms';
 import { createLoanSchema, repayLoanSchema } from './lending.validation';
 
@@ -26,11 +26,11 @@ export const createLoan = async (c: Context) => {
       return c.json({ error: 'Selected assets are not available for lending' }, 400);
     }
 
-    // Check if user has enough collateral in their wallet
-    const userCollateralWallet = await Wallet.findOne({ userId, assetId: collateralAsset._id });
+    // Check if user has enough collateral in their balance
+    const userCollateralBal = await UserBalance.findOne({ userId, assetId: collateralAsset._id });
 
-    if (!userCollateralWallet || userCollateralWallet.balance < collateralAmount) {
-      return c.json({ error: 'Insufficient collateral in wallet' }, 400);
+    if (!userCollateralBal || userCollateralBal.balance < collateralAmount) {
+      return c.json({ error: 'Insufficient collateral balance' }, 400);
     }
 
     // Calculate LTV (Loan-to-Value)
@@ -55,9 +55,11 @@ export const createLoan = async (c: Context) => {
       status: LoanStatus.ACTIVE,
     });
 
-    // Deduct collateral from user's wallet (simulate locking collateral)
-    userCollateralWallet.balance -= collateralAmount;
-    await userCollateralWallet.save();
+    // Lock collateral: move from balance to locked
+    await UserBalance.updateOne(
+      { userId, assetId: collateralAsset._id },
+      { $inc: { balance: -collateralAmount, locked: collateralAmount } }
+    );
 
     return c.json({ message: 'Loan created successfully', loan });
   } catch (error) {
@@ -91,11 +93,11 @@ export const repayLoan = async (c: Context) => {
     // If loan is fully repaid, change status to REPAID and return collateral
     if (loan.loanAmount <= 0) {
       loan.status = LoanStatus.REPAID;
-      const userCollateralWallet = await Wallet.findOne({ userId, assetId: loan.collateralAssetId });
-      if (userCollateralWallet) {
-        userCollateralWallet.balance += loan.collateralAmount;
-        await userCollateralWallet.save();
-      }
+      // Unlock collateral back to balance
+      await UserBalance.updateOne(
+        { userId, assetId: loan.collateralAssetId },
+        { $inc: { balance: loan.collateralAmount, locked: -loan.collateralAmount } }
+      );
     }
 
     await loan.save();
