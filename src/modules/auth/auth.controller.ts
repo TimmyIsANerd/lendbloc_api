@@ -55,6 +55,9 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
   return btoa(binary);
 };
 
+// Remove data URL prefix if present to keep payloads compact and provider-friendly
+const stripDataUrl = (input: string) => input.replace(/^data:[^;]+;base64,/, '');
+
 const
   checkKycStatus = async (userId: string) => {
     const kycRecord = await KycRecord.findOne({ userId });
@@ -105,7 +108,57 @@ export const getKycStatus = async (c: Context) => {
 
     } catch (error: any) {
       console.error('Error fetching Shufti Pro status:', error);
-      // Optionally, handle the error more gracefully, e.g., return a specific error status
+      const msg = (error as Error)?.message ?? '';
+      // If provider says reference is invalid, re-submit with the SAME reference to ensure acknowledgment
+      if (/invalid/i.test(msg) && /reference/i.test(msg)) {
+        try {
+          // Rebuild the payload from stored proofs
+          const dobParts = (kycRecord.documentDob || '').split('/');
+          const dobForShufti = dobParts.length === 3 ? `${dobParts[2]}-${dobParts[1]}-${dobParts[0]}` : '';
+          const nameParts = (kycRecord.documentName || '').split(' ');
+          const firstName = nameParts[0] || '';
+          const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
+
+          const payload: ShuftiVerifyPayload = {
+            reference: kycRecord.shuftiReferenceId,
+            document: kycRecord.documentProof ? {
+              proof: stripDataUrl(kycRecord.documentProof),
+              name: [firstName, lastName].filter((n): n is string => Boolean(n)),
+              dob: dobForShufti,
+            } : undefined,
+            face: kycRecord.faceProof ? {
+              proof: stripDataUrl(kycRecord.faceProof),
+            } : undefined,
+            consent: kycRecord.consentProof ? {
+              proof: stripDataUrl(kycRecord.consentProof),
+              text: `${kycRecord.documentName || ''} dob:${dobForShufti}`,
+            } : undefined,
+            background_checks: dobForShufti ? {
+              name: {
+                first_name: firstName,
+                last_name: lastName,
+              },
+              dob: dobForShufti,
+            } : undefined,
+          };
+
+          const response = await shuftiPro.verify(payload);
+          kycRecord.shuftiEvent = response.event;
+          kycRecord.shuftiVerificationResult = response;
+          if (response.event === 'verification.declined') {
+            kycRecord.status = KycStatus.REJECTED;
+            kycRecord.rejectionReason = response.declined_reason;
+          } else {
+            kycRecord.status = KycStatus.PENDING;
+          }
+          await kycRecord.save();
+        } catch (reErr) {
+          console.error('Re-submit with same reference failed:', reErr);
+          // Keep as pending; client can retry status later
+          kycRecord.status = KycStatus.PENDING;
+          await kycRecord.save();
+        }
+      }
     }
   }
 
@@ -289,8 +342,10 @@ export const submitKyc = async (c: Context) => {
   try {
     const shuftiReferenceId = shuftiPro.generateReference();
 
-    // Set shuftiReferenceId into kycRecord
+    // Persist the generated reference and mark as pending BEFORE contacting the provider
     kycRecord.shuftiReferenceId = shuftiReferenceId;
+    kycRecord.status = KycStatus.PENDING;
+    await kycRecord.save();
 
     const dobParts = kycRecord.documentDob!.split('/');
     const dobForShufti = `${dobParts[2]}-${dobParts[1]}-${dobParts[0]}`;
@@ -302,15 +357,15 @@ export const submitKyc = async (c: Context) => {
     const payload: ShuftiVerifyPayload = {
       reference: shuftiReferenceId,
       document: {
-        proof: kycRecord.documentProof,
+        proof: stripDataUrl(kycRecord.documentProof!),
         name: [firstName, lastName].filter((n): n is string => Boolean(n)),
         dob: dobForShufti,
       },
       face: {
-        proof: kycRecord.faceProof,
+        proof: stripDataUrl(kycRecord.faceProof!),
       },
       consent: {
-        proof: kycRecord.consentProof,
+        proof: stripDataUrl(kycRecord.consentProof!),
         text: `${kycRecord.documentName!} dob:${dobForShufti}`,
       },
       background_checks: {
@@ -335,12 +390,13 @@ export const submitKyc = async (c: Context) => {
       }
       await kycRecord.save();
 
-      return c.json({ message: 'KYC submission successful', data: response });
+      return c.json({ message: 'KYC submission successful', reference: shuftiReferenceId, data: response });
     } catch (error: any) {
-      kycRecord.status = KycStatus.FAILED;
+      // Keep status pending; provider may have accepted while our client timed out
+      kycRecord.status = KycStatus.PENDING;
       kycRecord.rejectionReason = error.message;
       await kycRecord.save();
-      return c.json({ message: 'KYC submission successful', data: { message: 'timeout' } });
+      return c.json({ message: 'KYC submission pending', reference: shuftiReferenceId }, 202);
     }
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
@@ -459,7 +515,7 @@ export const sendPhone = async (c: Context) => {
     { upsert: true, new: true }
   );
 
-  await sendSms(user.phoneNumber, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
+  await sendSms(user.phoneNumber as string, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
 
   return c.json({ message: 'An OTP has been sent to your phone number.' });
 }
@@ -607,9 +663,9 @@ export const requestPasswordReset = async (c: Context) => {
   );
 
   if (email) {
-    sendEmail(user.email, '[LENDBLOCK] Password Reset Request', passwordResetRequestEmail(otpCode, 10));
+    sendEmail(user.email as string, '[LENDBLOCK] Password Reset Request', passwordResetRequestEmail(otpCode, 10));
   } else {
-    await sendSms(user.phoneNumber, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
+    await sendSms(user.phoneNumber as string, `Your OTP is ${otpCode}. It expires in 10 minutes.`);
   }
 
   return c.json({ message: 'Password reset requested. Check your email/phone for OTP.', userId: user._id });
@@ -664,7 +720,7 @@ export const setPassword = async (c: Context) => {
     return c.json({ error: 'Password reset not allowed' }, 400);
   }
 
-  const passwordMatch = await bcrypt.compare(password, user.passwordHash);
+  const passwordMatch = await bcrypt.compare(password, user.passwordHash as string);
 
   if (passwordMatch) {
     return c.json({ error: "New password can't be the same as old password" }, 400);

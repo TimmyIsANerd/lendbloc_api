@@ -5,8 +5,12 @@ export const otpStartSchema = z.object({
   email: z.string().email().optional(),
   phone: z.string().regex(/^\+[1-9]\d{1,14}$/, 'Phone must be in E.164 format').optional(),
   referrer: z.string().optional(),
-}).refine((data) => !!data.email || !!data.phone, {
+})
+.refine((data) => !!data.email || !!data.phone, {
   message: 'Either email or phone is required',
+})
+.refine((data) => !(data.email && data.phone), {
+  message: 'Provide either email or phone, not both',
 });
 
 export const otpVerifySchema = z.object({
