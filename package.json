@@ -53,6 +53,7 @@
     "seed": "bun run seeds/seed.ts",
     "seed:drop": "bun run seeds/drop.ts",
     "seed:assets:cmc": "bun run seeds/seed_cmc_assets.ts",
-    "seed:assets:drop": "bun run seeds/drop_assets.ts"
+    "seed:assets:drop": "bun run seeds/drop_assets.ts",
+    "seed:admin": "bun run seeds/seed_admin.ts"
   }
 }

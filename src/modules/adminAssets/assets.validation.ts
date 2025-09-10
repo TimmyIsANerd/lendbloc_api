@@ -40,6 +40,16 @@ export const updateAssetFeesOnlySchema = z.object({
   referralFeePercent: perAccountPercentPartialSchema.optional(),
 });
 
+// Path param validation for :id
+export const assetIdParamSchema = z.object({
+  id: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid asset ID')
+});
+
+// Optional body schema if an endpoint needs assetId in the payload
+export const assetIdBodySchema = z.object({
+  assetId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid asset ID')
+});
+
 export const createAssetSchema = z.object({
   name: z.string().min(1),
   symbol: z.string().min(1),
