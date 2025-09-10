@@ -18,6 +18,7 @@ import prices from './src/modules/prices/prices.routes';
 import dashboard from './src/modules/dashboard/dashboard.routes';
 import { adminChat } from './src/modules/adminChat/chat.routes';
 import adminAssets from './src/modules/adminAssets/assets.routes';
+import balances from './src/modules/balances/balances.routes';
 import connectDB from './src/config/db';
 import { createBunWebSocket } from 'hono/bun'
 
@@ -63,6 +64,7 @@ app.route('/api/v1/referrals', referrals);
 app.route('/api/v1/calculator', calculator);
 app.route('/api/v1/prices', prices);
 app.route('/api/v1/dashboard', dashboard);
+app.route('/api/v1/balances', balances);
 
 const now = new Date();
 const formattedDate = now.toLocaleString('en-US', {
