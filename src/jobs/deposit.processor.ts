@@ -6,7 +6,6 @@ import { depositQueue, type TatumIncomingPayload } from "./queue";
 import { confirmTransaction } from "../helpers/tatum/confirm";
 import { mapTatumChainToInternalNetwork, toWalletNetwork } from "../helpers/tatum/mapping";
 import { relocateFundsToLiquidityWallet } from "../utils/funds";
-import User, { AccountType } from "../models/User";
 
 // Initialize processor
 
@@ -119,11 +118,6 @@ depositQueue.setProcessor(async (payload: TatumIncomingPayload) => {
       });
     } else {
       await relocateFundsToLiquidityWallet(String(baseWallet._id), amountNum);
-    }
-  } catch (e) {
-    console.error('Relocation failed for tx:', txId, e);
-  }
-});
     }
   } catch (e) {
     console.error('Relocation failed for tx:', txId, e);

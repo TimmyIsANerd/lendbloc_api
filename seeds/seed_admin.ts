@@ -13,6 +13,7 @@ async function main() {
     const fullName = process.env.ADMIN_FULLNAME || 'Super Admin'
     const secondaryEmail = process.env.ADMIN_SECONDARY_EMAIL || 'admin2@lendbloc.local'
     const role = (process.env.ADMIN_ROLE as AdminRole) || AdminRole.SUPER_ADMIN
+    const phoneNumber = process.env.ADMIN_PHONE || '+15550000000'
     const plainPassword = process.env.ADMIN_PASSWORD || 'Admin@12345'
 
     let admin = await Admin.findOne({ email })
@@ -24,6 +25,7 @@ async function main() {
         username,
         email,
         secondaryEmail,
+        phoneNumber,
         passwordHash,
         isEmailVerified: true,
         isPhoneNumberVerified: true,
