@@ -3,6 +3,7 @@ import { z } from 'zod';
 import SavingsAccount from '../../models/SavingsAccount';
 import Asset from '../../models/Asset';
 import Wallet from '../../models/Wallet';
+import User, { AccountType } from '../../models/User';
 import { termKeyFromDays } from '../../helpers/assets/terms';
 import { createSavingsAccountSchema, depositToSavingsAccountSchema, withdrawFromSavingsAccountSchema } from './savings.validation';
 
@@ -31,6 +32,9 @@ export const createSavingsAccount = async (c: Context) => {
 
     const userWallet = await Wallet.findOne({ userId, assetId: asset._id });
 
+    const user = await User.findById(userId).select('accountType');
+    const acct: AccountType = user?.accountType || AccountType.REG;
+
     if (!userWallet || userWallet.balance < amount) {
       return c.json({ error: 'Insufficient balance in wallet' }, 400);
     }
@@ -39,7 +43,7 @@ export const createSavingsAccount = async (c: Context) => {
     await userWallet.save();
 
     const tKey = termKeyFromDays(termDays as 7 | 30 | 180 | 365);
-    const apy = asset.fees?.savingsInterest?.[tKey] ?? 0;
+    const apy = asset.fees?.savingsInterest?.[acct]?.[tKey] ?? 0;
     const lockStartAt = new Date();
     const lockEndAt = new Date(lockStartAt.getTime() + termDays * 24 * 60 * 60 * 1000);
 

@@ -5,6 +5,7 @@ import { depositQueue, type TatumIncomingPayload } from "./queue";
 import { confirmTransaction } from "../helpers/tatum/confirm";
 import { mapTatumChainToInternalNetwork, toWalletNetwork } from "../helpers/tatum/mapping";
 import { relocateFundsToLiquidityWallet } from "../utils/funds";
+import User, { AccountType } from "../models/User";
 
 // Initialize processor
 
@@ -84,8 +85,13 @@ depositQueue.setProcessor(async (payload: TatumIncomingPayload) => {
     }
   }
 
-  // Apply receive fee when crediting user wallet
-  const receiveFeePercent = assetDoc?.fees?.receiveFeePercent ?? 0;
+  // Apply receive fee when crediting user wallet by account type
+  let receiveFeePercent = 0;
+  try {
+    const user = await User.findById(baseWallet.userId).select('accountType');
+    const acct: AccountType = user?.accountType || AccountType.REG;
+    receiveFeePercent = Number(assetDoc?.fees?.receiveFeePercent?.[acct] ?? 0);
+  } catch {}
   const netAmount = amountNum * (1 - receiveFeePercent / 100);
 
   // Credit wallet balance and asset aggregate (net amount)

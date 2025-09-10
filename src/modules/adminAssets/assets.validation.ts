@@ -12,16 +12,17 @@ export const loanInterestSchema = z.object({
   PRO: termInterestSchema,
 });
 
+const perAccountPercentSchema = z.object({ REG: z.number().min(0), PRO: z.number().min(0) })
+const perAccountTermInterestSchema = z.object({ REG: termInterestSchema, PRO: termInterestSchema })
+
 export const assetFeesSchema = z.object({
   loanInterest: loanInterestSchema,
-  savingsInterest: termInterestSchema,
-  sendFeePercent: z.number().min(0),
-  receiveFeePercent: z.number().min(0),
-  exchangeFeePercentFrom: z.number().min(0).default(0),
-  exchangeFeePercentTo: z.number().min(0).default(0),
-  // optional legacy single side fee; if provided, controller maps it to both
-  exchangeFeePercent: z.number().min(0).optional(),
-  referralFeePercent: z.number().min(0),
+  savingsInterest: perAccountTermInterestSchema,
+  sendFeePercent: perAccountPercentSchema,
+  receiveFeePercent: perAccountPercentSchema,
+  exchangeFeePercentFrom: perAccountPercentSchema,
+  exchangeFeePercentTo: perAccountPercentSchema,
+  referralFeePercent: perAccountPercentSchema,
 });
 
 export const createAssetSchema = z.object({

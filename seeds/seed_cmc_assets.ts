@@ -28,12 +28,15 @@ const DEFAULT_FEES = {
     REG: { d7: 3, d30: 4, d180: 6, d365: 8 },
     PRO: { d7: 2, d30: 3, d180: 5, d365: 7 },
   },
-  savingsInterest: { d7: 1, d30: 2, d180: 3, d365: 4 },
-  sendFeePercent: 0.1,
-  receiveFeePercent: 0.05,
-  exchangeFeePercentFrom: 0.2,
-  exchangeFeePercentTo: 0.2,
-  referralFeePercent: 0.5,
+  savingsInterest: {
+    REG: { d7: 1, d30: 2, d180: 3, d365: 4 },
+    PRO: { d7: 1, d30: 2, d180: 3, d365: 4 },
+  },
+  sendFeePercent: { REG: 0.1, PRO: 0.08 },
+  receiveFeePercent: { REG: 0.05, PRO: 0.04 },
+  exchangeFeePercentFrom: { REG: 0.2, PRO: 0.15 },
+  exchangeFeePercentTo: { REG: 0.2, PRO: 0.15 },
+  referralFeePercent: { REG: 0.5, PRO: 0.5 },
 } as any
 
 const BASE_URL = process.env.CMC_BASE_URL || 'https://pro-api.coinmarketcap.com'

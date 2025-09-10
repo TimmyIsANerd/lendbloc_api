@@ -3,6 +3,7 @@ import { z } from 'zod';
 import Asset from '../../models/Asset';
 import Wallet from '../../models/Wallet';
 import Vote from '../../models/Vote';
+import User, { AccountType } from '../../models/User';
 import { swapCryptoSchema, voteForCoinSchema } from './exchange.validation';
 
 export const swapCrypto = async (c: Context) => {
@@ -14,6 +15,9 @@ export const swapCrypto = async (c: Context) => {
   try {
     const fromAsset = await Asset.findById(fromAssetId);
     const toAsset = await Asset.findById(toAssetId);
+
+    const user = await User.findById(userId).select('accountType');
+    const acct: AccountType = user?.accountType || AccountType.REG;
 
     if (!fromAsset || !toAsset) {
       return c.json({ error: 'Invalid asset ID' }, 400);
@@ -32,9 +36,9 @@ export const swapCrypto = async (c: Context) => {
     // Simulate exchange rate by price ratio
     const convertedAmount = amount * (fromAsset.currentPrice / toAsset.currentPrice);
 
-    // Apply exchange fees: from side and to side
-    const fromFeePercent = (fromAsset.fees?.exchangeFeePercentFrom ?? fromAsset.fees?.exchangeFeePercent ?? 0);
-    const toFeePercent = (toAsset.fees?.exchangeFeePercentTo ?? toAsset.fees?.exchangeFeePercent ?? 0);
+    // Apply exchange fees: from side and to side by account type
+    const fromFeePercent = Number(fromAsset.fees?.exchangeFeePercentFrom?.[acct] ?? 0);
+    const toFeePercent = Number(toAsset.fees?.exchangeFeePercentTo?.[acct] ?? 0);
 
     const fromFeeAmount = amount * (fromFeePercent / 100);
     const toFeeAmount = convertedAmount * (toFeePercent / 100);
