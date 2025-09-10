@@ -1,5 +1,6 @@
 import { type Context } from 'hono';
 import User from '../../models/User'; // Import the User model
+import KycRecord, { KycStatus } from '../../models/KycRecord';
 import { enqueueDepositJob } from '../../jobs/deposit.processor';
 
 export const shuftiRedirect = async (c: Context) => {
@@ -52,33 +53,41 @@ export const shuftiCallback = async (c: Context) => {
         const body = await c.req.json();
         console.log('Shufti Callback Received:', JSON.stringify(body, null, 2));
 
-        const { event, reference, verification_result } = body;
-
-        // Best practice: Validate webhook signature if Shufti provides one.
-        // For this example, we'll proceed without signature validation,
-        // but in a production environment, this is crucial for security.
+        const { event, reference, verification_result, declined_reason } = body;
 
         if (!reference) {
             console.error('Shufti Callback: Missing reference ID');
             return c.json({ message: 'Missing reference ID' }, 400);
         }
 
-        const user = await User.findOne({ kycReferenceId: reference });
+        const kycRecord = await KycRecord.findOne({ shuftiReferenceId: reference });
+        if (!kycRecord) {
+            console.error(`Shufti Callback: KycRecord not found for reference ID: ${reference}`);
+            return c.json({ message: 'KYC record not found' }, 404);
+        }
 
+        const user = await User.findById(kycRecord.userId);
         if (!user) {
-            console.error(`Shufti Callback: User not found for reference ID: ${reference}`);
+            console.error(`Shufti Callback: User not found for KYC record`);
             return c.json({ message: 'User not found' }, 404);
         }
 
-        if (event === 'verification.accepted' && verification_result === 'accepted') {
+        if (event === 'verification.accepted' && (verification_result === 'accepted' || verification_result?.event === 'verification.accepted')) {
             user.isKycVerified = true;
             await user.save();
+            kycRecord.status = KycStatus.APPROVED;
+            kycRecord.shuftiEvent = event;
+            kycRecord.shuftiVerificationResult = body;
+            await kycRecord.save();
             console.log(`User ${user.email} (ID: ${user._id}) KYC status updated to verified.`);
             return c.json({ message: 'Callback processed successfully' }, 200);
         } else if (event === 'verification.declined' || verification_result === 'declined') {
-            // Handle declined verification (e.g., log, notify user, keep isKycVerified as false)
+            kycRecord.status = KycStatus.REJECTED;
+            kycRecord.shuftiEvent = event;
+            kycRecord.shuftiDeclinedReason = declined_reason || body?.declined_reason;
+            kycRecord.shuftiVerificationResult = body;
+            await kycRecord.save();
             console.log(`User ${user.email} (ID: ${user._id}) KYC verification declined. Event: ${event}, Result: ${verification_result}`);
-            // Optionally, you might want to store the reason for decline
             return c.json({ message: 'Verification declined, status updated' }, 200);
         } else {
             console.log(`Shufti Callback: Unhandled event or status. Event: ${event}, Result: ${verification_result}`);

@@ -398,7 +398,7 @@ responses: { '201': { description: 'Wallet created', content: { 'application/jso
           summary: 'Get wallet details',
           description: 'Returns wallet details for a given wallet ID belonging to the authenticated user.',
           security: [{ BearerAuth: [] }],
-responses: { '200': { description: 'Asset listed', content: { 'application/json': { example: { message: 'Asset listed', asset: { _id: '65a...', status: 'LISTED' } } } } }, '404': { description: 'Asset not found' },
+          responses: { '200': { description: 'Asset listed', content: { 'application/json': { example: { message: 'Asset listed', asset: { _id: '65a...', status: 'LISTED' } } } } }, '404': { description: 'Asset not found' } },
         },
       },
       '/api/v1/wallets/address/{walletAddress}': {
@@ -670,7 +670,7 @@ description: 'Sends an admin invitation email with a token. Requires SUPER_ADMIN
           summary: 'List loans',
           description: 'Lists all loans in the system.',
           security: [{ BearerAuth: [] }],
-responses: { '200': { description: 'List of assets', content: { 'application/json': { example: { data: [{ _id: '65a...', symbol: 'BTC', network: 'ETH', status: 'LISTED' }], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } } } } },
+          responses: { '200': { description: 'List of assets', content: { 'application/json': { example: { data: [{ _id: '65a...', symbol: 'BTC', network: 'ETH', status: 'LISTED' }], meta: { page: 1, limit: 20, total: 1, totalPages: 1 } } } } } },
         },
       },
       '/api/v1/admin/savings': {

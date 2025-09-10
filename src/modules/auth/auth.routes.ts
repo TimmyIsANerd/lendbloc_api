@@ -4,12 +4,12 @@ import { zValidator } from '@hono/zod-validator';
 import { rateLimiter } from 'hono-rate-limiter';
 import { authMiddleware } from '../../middleware/auth';
 import {
-  registerUserSchema,
+  otpStartSchema,
+  otpVerifySchema,
+  kycBioSchema,
   verifyEmailSchema,
   requestPhoneOtpSchema,
   verifyPhoneSchema,
-  loginUserSchema,
-  verifyOtpSchema,
   kycDocumentSchema,
   kycFaceSchema,
   kycAddressSchema,
@@ -24,7 +24,9 @@ import {
   validatePasswordResetOTPSchema,
 } from './auth.validation';
 import {
-  registerUser,
+  otpStart,
+  otpVerify,
+  kycBio,
   verifyEmail,
   sendPhone,
   verifyPhone,
@@ -34,8 +36,6 @@ import {
   kycConsent,
   submitKyc,
   getKycStatus,
-  loginUser,
-  verifyLogin,
   requestPasswordReset,
   setPassword,
   refreshToken,
@@ -72,8 +72,12 @@ const passwordRequestLimiter = rateLimiter({
   },
 });
 
+// OTP-only Auth
+auth.post('/otp/start', zValidator('json', otpStartSchema), otpStart);
+auth.post('/otp/verify', zValidator('json', otpVerifySchema), otpVerify);
 
-auth.post('/register', zValidator('json', registerUserSchema), registerUser);
+// KYC Bio (Flow 1)
+auth.post('/kyc/bio', zValidator('json', kycBioSchema), kycBio);
 
 // Email & Phone Verification
 auth.post("/verify/email", zValidator('json', verifyEmailSchema), verifyEmail);
@@ -88,10 +92,6 @@ auth.post('/kyc/address', zValidator('json', kycAddressSchema), kycAddress);
 auth.post('/kyc/consent', zValidator('form', kycConsentSchema), kycConsent);
 auth.post('/kyc/submit', zValidator('json', submitKycSchema), submitKyc);
 auth.get('/kyc/status', zValidator('query', getKycStatusSchema), getKycStatus);
-
-// Login
-auth.post('/login', zValidator('json', loginUserSchema), loginUser);
-auth.post('/verify-login', zValidator('json', verifyOtpSchema), verifyLogin);
 
 // Password Reset
 auth.post(

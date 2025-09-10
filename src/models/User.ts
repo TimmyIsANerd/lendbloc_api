@@ -12,12 +12,12 @@ export enum AccountType {
 }
 
 export interface IUser extends Document {
-  title: string;
-  fullName: string;
-  dateOfBirth: string;
-  email: string;
-  phoneNumber: string;
-  passwordHash: string;
+  title?: string;
+  fullName?: string;
+  dateOfBirth?: string;
+  email?: string;
+  phoneNumber?: string;
+  passwordHash?: string;
   kycReferenceId: string;
   referralId: string;
   isKycVerified: boolean;
@@ -35,12 +35,12 @@ export interface IUser extends Document {
 
 const UserSchema: Schema = new Schema(
   {
-    title: { type: String, required: true },
-    fullName: { type: String, required: true },
-    dateOfBirth: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    phoneNumber: { type: String, required: true, unique: true },
-    passwordHash: { type: String, required: true },
+    title: { type: String, required: false },
+    fullName: { type: String, required: false },
+    dateOfBirth: { type: String, required: false },
+    email: { type: String, required: false, unique: true, sparse: true },
+    phoneNumber: { type: String, required: false, unique: true, sparse: true },
+    passwordHash: { type: String, required: false },
     kycReferenceId: { type: String, unique: true, required: true },
     referralId: { type: String, unique: true, required: true },
     isKycVerified: { type: Boolean, default: false },

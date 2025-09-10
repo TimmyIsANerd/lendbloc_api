@@ -25,6 +25,7 @@ export interface IKycRecord extends Document {
   documentDob?: string;
   fullAddress?: string;
   consentText?: string;
+  socialIssuanceNumberEncrypted?: string;
 }
 
 const KycRecordSchema: Schema = new Schema(
@@ -46,6 +47,7 @@ const KycRecordSchema: Schema = new Schema(
     documentDob: { type: String },
     fullAddress: { type: String },
     consentText: { type: String },
+    socialIssuanceNumberEncrypted: { type: String },
   },
   { timestamps: true }
 );

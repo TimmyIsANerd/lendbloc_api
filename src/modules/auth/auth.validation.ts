@@ -1,15 +1,36 @@
 import { z } from 'zod';
 
-export const registerUserSchema = z.object({
-  title: z.string(),
-  fullName: z.string(),
-  dateOfBirth: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, "Date of birth must be in DD/MM/YYYY format"),
-  email: z.email(),
-  phone: z.string().optional(),
-  password: z.string().min(8),
+// OTP-first auth
+export const otpStartSchema = z.object({
+  email: z.string().email().optional(),
+  phone: z.string().regex(/^\+[1-9]\d{1,14}$/, 'Phone must be in E.164 format').optional(),
   referrer: z.string().optional(),
+})
+.refine((data) => !!data.email || !!data.phone, {
+  message: 'Either email or phone is required',
+})
+.refine((data) => !(data.email && data.phone), {
+  message: 'Provide either email or phone, not both',
 });
 
+export const otpVerifySchema = z.object({
+  userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
+  otp: z.string().length(6),
+  clientDevice: z.enum(['web', 'mobile']),
+});
+
+// KYC Bio (Flow 1)
+export const kycBioSchema = z.object({
+  userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
+  title: z.string(),
+  fullName: z.string(),
+  dateOfBirth: z.string().regex(/^\d{2}\/\d{2}\/\d{4}$/, 'Date of birth must be in DD/MM/YYYY format'),
+  email: z.string().email(),
+  socialIssuanceNumber: z.string().min(4),
+  password: z.string().min(8),
+});
+
+// Existing verification flows kept
 export const verifyEmailSchema = z.object({
   userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
   otp: z.string().length(6),
@@ -46,20 +67,8 @@ export const submitKycSchema = z.object({
   userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
 });
 
-export const loginUserSchema = z.object({
-  email: z.string().optional(),
-  phone: z.string().optional(),
-  password: z.string(),
-});
-
-export const verifyOtpSchema = z.object({
-  userId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid user ID'),
-  otp: z.string().length(6),
-  clientDevice: z.enum(['web', 'mobile']),
-});
-
 export const requestPasswordResetSchema = z.object({
-  email: z.email().optional(),
+  email: z.string().email().optional(),
   phone: z.string().optional(),
 });
 
