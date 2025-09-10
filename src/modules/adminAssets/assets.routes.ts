@@ -9,8 +9,11 @@ router.use('/*', adminAuthMiddleware());
 
 router.post('/', zValidator('json', createAssetSchema), createAsset);
 router.get('/', zValidator('query', listAssetsQuerySchema), listAssets);
+router.get('/overview', zValidator('query', listAssetsQuerySchema), listAssetsOverview);
 router.get('/:id', getAsset);
+router.get('/:id/fees', getAssetFees);
 router.put('/:id', zValidator('json', updateAssetSchema), updateAsset);
+router.put('/:id/fees', zValidator('json', updateAssetFeesOnlySchema), updateAssetFees);
 router.post('/:id/list', listAsset);
 router.post('/:id/delist', delistAsset);
 

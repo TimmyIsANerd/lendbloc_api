@@ -25,6 +25,21 @@ export const assetFeesSchema = z.object({
   referralFeePercent: perAccountPercentSchema,
 });
 
+// Partial schemas for fees-only update
+const termInterestPartialSchema = z.object({ d7: z.number().min(0).optional(), d30: z.number().min(0).optional(), d180: z.number().min(0).optional(), d365: z.number().min(0).optional() })
+const perAccountTermInterestPartialSchema = z.object({ REG: termInterestPartialSchema.optional(), PRO: termInterestPartialSchema.optional() })
+const perAccountPercentPartialSchema = z.object({ REG: z.number().min(0).optional(), PRO: z.number().min(0).optional() })
+
+export const updateAssetFeesOnlySchema = z.object({
+  loanInterest: perAccountTermInterestPartialSchema.optional(),
+  savingsInterest: perAccountTermInterestPartialSchema.optional(),
+  sendFeePercent: perAccountPercentPartialSchema.optional(),
+  receiveFeePercent: perAccountPercentPartialSchema.optional(),
+  exchangeFeePercentFrom: perAccountPercentPartialSchema.optional(),
+  exchangeFeePercentTo: perAccountPercentPartialSchema.optional(),
+  referralFeePercent: perAccountPercentPartialSchema.optional(),
+});
+
 export const createAssetSchema = z.object({
   name: z.string().min(1),
   symbol: z.string().min(1),
