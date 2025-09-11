@@ -1,55 +1,37 @@
+import { describe, it, expect, beforeAll, afterAll, afterEach } from 'bun:test'
+import { connectTestDb, disconnectTestDb, clearDb, signUserToken, bearer } from '../../../tests/test-utils'
+import app from '../../../../index'
+import User from '../../models/User'
+import Referral from '../../models/Referral'
+import Earning from '../../models/Earning'
 
-import app from '../../../../index';
-import { describe, it, expect } from 'bun:test';
+describe('Referrals Module', () => {
+  beforeAll(async () => { await connectTestDb() })
+  afterEach(async () => { await clearDb() })
+  afterAll(async () => { await disconnectTestDb() })
 
-describe('Referral Module', () => {
-  it('should get referrals for a user', async () => {
-    // Create a user and get a token
-    const registerResponse = await app.request('/api/v1/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: 'Mr',
-        fullName: 'Test User',
-        dateOfBirth: '1990-01-01',
-        email: 'testuser@example.com',
-        phoneNumber: '1234567890',
-        password: 'password123',
-      }),
-    });
-    const { token } = await registerResponse.json();
+  it('returns referrals list for an authenticated user', async () => {
+    const user = await User.create({ email: 'ref.owner@example.com', kycReferenceId: 'RREF1', referralId: 'CODE1' })
+    const u2 = await User.create({ email: 'friend@example.com', kycReferenceId: 'RREF2', referralId: 'CODE2' })
+    await Referral.create({ user: user._id, referredUsers: [u2._id] })
 
-    const response = await app.request('/api/v1/referrals', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const token = await signUserToken(String(user._id))
+    const res = await app.request('/api/v1/referrals', { headers: bearer(token) })
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data?.referredUsers?.length ?? 0).toBe(1)
+  })
 
-    expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data).toHaveProperty('referrals');
-  });
+  it('returns referral earnings for an authenticated user', async () => {
+    const user = await User.create({ email: 'earn.owner@example.com', kycReferenceId: 'RREF3', referralId: 'CODE3' })
+    const u2 = await User.create({ email: 'friend2@example.com', kycReferenceId: 'RREF4', referralId: 'CODE4' })
+    const ref = await Referral.create({ user: user._id, referredUsers: [u2._id] })
+    await Earning.create({ referral: ref._id, referredUser: u2._id, amount: 10 })
 
-  it('should get referral earnings for a user', async () => {
-    // Create a user and get a token
-    const registerResponse = await app.request('/api/v1/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        title: 'Mr',
-        fullName: 'Test User',
-        dateOfBirth: '1990-01-01',
-        email: 'testuser@example.com',
-        phoneNumber: '1234567890',
-        password: 'password123',
-      }),
-    });
-    const { token } = await registerResponse.json();
-
-    const response = await app.request('/api/v1/referrals/earnings', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data).toHaveProperty('earnings');
-  });
-});
+    const token = await signUserToken(String(user._id))
+    const res = await app.request('/api/v1/referrals/earnings', { headers: bearer(token) })
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(Array.isArray(data)).toBe(true)
+  })
+})

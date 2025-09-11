@@ -12,16 +12,42 @@ export const loanInterestSchema = z.object({
   PRO: termInterestSchema,
 });
 
+const perAccountPercentSchema = z.object({ REG: z.number().min(0), PRO: z.number().min(0) })
+const perAccountTermInterestSchema = z.object({ REG: termInterestSchema, PRO: termInterestSchema })
+
 export const assetFeesSchema = z.object({
   loanInterest: loanInterestSchema,
-  savingsInterest: termInterestSchema,
-  sendFeePercent: z.number().min(0),
-  receiveFeePercent: z.number().min(0),
-  exchangeFeePercentFrom: z.number().min(0).default(0),
-  exchangeFeePercentTo: z.number().min(0).default(0),
-  // optional legacy single side fee; if provided, controller maps it to both
-  exchangeFeePercent: z.number().min(0).optional(),
-  referralFeePercent: z.number().min(0),
+  savingsInterest: perAccountTermInterestSchema,
+  sendFeePercent: perAccountPercentSchema,
+  receiveFeePercent: perAccountPercentSchema,
+  exchangeFeePercentFrom: perAccountPercentSchema,
+  exchangeFeePercentTo: perAccountPercentSchema,
+  referralFeePercent: perAccountPercentSchema,
+});
+
+// Partial schemas for fees-only update
+const termInterestPartialSchema = z.object({ d7: z.number().min(0).optional(), d30: z.number().min(0).optional(), d180: z.number().min(0).optional(), d365: z.number().min(0).optional() })
+const perAccountTermInterestPartialSchema = z.object({ REG: termInterestPartialSchema.optional(), PRO: termInterestPartialSchema.optional() })
+const perAccountPercentPartialSchema = z.object({ REG: z.number().min(0).optional(), PRO: z.number().min(0).optional() })
+
+export const updateAssetFeesOnlySchema = z.object({
+  loanInterest: perAccountTermInterestPartialSchema.optional(),
+  savingsInterest: perAccountTermInterestPartialSchema.optional(),
+  sendFeePercent: perAccountPercentPartialSchema.optional(),
+  receiveFeePercent: perAccountPercentPartialSchema.optional(),
+  exchangeFeePercentFrom: perAccountPercentPartialSchema.optional(),
+  exchangeFeePercentTo: perAccountPercentPartialSchema.optional(),
+  referralFeePercent: perAccountPercentPartialSchema.optional(),
+});
+
+// Path param validation for :id
+export const assetIdParamSchema = z.object({
+  id: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid asset ID')
+});
+
+// Optional body schema if an endpoint needs assetId in the payload
+export const assetIdBodySchema = z.object({
+  assetId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid asset ID')
 });
 
 export const createAssetSchema = z.object({

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import SavingsAccount from '../../models/SavingsAccount';
 import Asset from '../../models/Asset';
 import Wallet from '../../models/Wallet';
+import User, { AccountType } from '../../models/User';
 import { termKeyFromDays } from '../../helpers/assets/terms';
 import { createSavingsAccountSchema, depositToSavingsAccountSchema, withdrawFromSavingsAccountSchema } from './savings.validation';
 
@@ -29,17 +30,22 @@ export const createSavingsAccount = async (c: Context) => {
       return c.json({ error: 'Savings account for this asset already exists' }, 409);
     }
 
-    const userWallet = await Wallet.findOne({ userId, assetId: asset._id });
+    const userBalance = await (await import('../../models/UserBalance')).default.findOne({ userId, assetId: asset._id });
 
-    if (!userWallet || userWallet.balance < amount) {
-      return c.json({ error: 'Insufficient balance in wallet' }, 400);
+    if (!userBalance || userBalance.balance < amount) {
+      return c.json({ error: 'Insufficient balance' }, 400);
     }
 
-    userWallet.balance -= amount;
-    await userWallet.save();
+    await (await import('../../models/UserBalance')).default.updateOne(
+      { userId, assetId: asset._id },
+      { $inc: { balance: -amount } }
+    );
+
+    const user = await User.findById(userId).select('accountType');
+    const acct: AccountType = user?.accountType || AccountType.REG;
 
     const tKey = termKeyFromDays(termDays as 7 | 30 | 180 | 365);
-    const apy = asset.fees?.savingsInterest?.[tKey] ?? 0;
+    const apy = asset.fees?.savingsInterest?.[acct]?.[tKey] ?? 0;
     const lockStartAt = new Date();
     const lockEndAt = new Date(lockStartAt.getTime() + termDays * 24 * 60 * 60 * 1000);
 
@@ -74,14 +80,14 @@ export const depositToSavingsAccount = async (c: Context) => {
       return c.json({ error: 'Savings account not found' }, 404);
     }
 
-    const userWallet = await Wallet.findOne({ userId, assetId: savingsAccount.assetId });
+    const UB = (await import('../../models/UserBalance')).default;
+    const userBal = await UB.findOne({ userId, assetId: savingsAccount.assetId });
 
-    if (!userWallet || userWallet.balance < amount) {
-      return c.json({ error: 'Insufficient balance in wallet' }, 400);
+    if (!userBal || userBal.balance < amount) {
+      return c.json({ error: 'Insufficient balance' }, 400);
     }
 
-    userWallet.balance -= amount;
-    await userWallet.save();
+    await UB.updateOne({ userId, assetId: savingsAccount.assetId }, { $inc: { balance: -amount } });
 
     savingsAccount.balance += amount;
     await savingsAccount.save();
@@ -116,14 +122,12 @@ export const withdrawFromSavingsAccount = async (c: Context) => {
       return c.json({ error: 'Insufficient balance in savings account' }, 400);
     }
 
-    const userWallet = await Wallet.findOne({ userId, assetId: savingsAccount.assetId });
-
-    if (!userWallet) {
-      return c.json({ error: 'User wallet not found' }, 404);
-    }
-
-    userWallet.balance += amount;
-    await userWallet.save();
+    const UB = (await import('../../models/UserBalance')).default;
+    await UB.findOneAndUpdate(
+      { userId, assetId: savingsAccount.assetId },
+      { $inc: { balance: amount } },
+      { upsert: true }
+    );
 
     savingsAccount.balance -= amount;
     await savingsAccount.save();

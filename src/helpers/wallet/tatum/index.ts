@@ -1,5 +1,7 @@
-import { TatumSDK } from "@tatumio/tatum"
+import { TatumSDK } from '@tatumio/tatum'
 
-export const subscribeWalletsToNotifications(){
-    //
-}
+// Placeholder for future wallet notification subscriptions via Tatum
+export const subscribeWalletsToNotifications = async () => {
+  // no-op for now
+  return true;
+};

@@ -1,7 +1,7 @@
 import { type Context } from 'hono';
 import { z } from 'zod';
 import Asset from '../../models/Asset';
-import { createAssetSchema, updateAssetSchema, listAssetsQuerySchema } from './assets.validation';
+import { createAssetSchema, updateAssetSchema, listAssetsQuerySchema, updateAssetFeesOnlySchema } from './assets.validation';
 
 export const createAsset = async (c: Context) => {
   const payload = c.req.valid('json' as never) as z.infer<typeof createAssetSchema>;
@@ -65,6 +65,40 @@ export const listAssets = async (c: Context) => {
   }
 };
 
+export const listAssetsOverview = async (c: Context) => {
+  const query = c.req.valid('query' as never) as z.infer<typeof listAssetsQuerySchema>;
+  const page = query.page ?? 1;
+  const limit = query.limit ?? 20;
+  const skip = (page - 1) * limit;
+
+  const filter: any = {};
+  if (query.status) filter.status = query.status;
+  if (query.network) filter.network = query.network;
+  if (query.kind) filter.kind = query.kind;
+  if (query.symbol) filter.symbol = query.symbol.toUpperCase();
+
+  try {
+    const projection = '-currentPrice -marketCap -circulatingSupply -isLendable -isCollateral';
+    const [items, total] = await Promise.all([
+      Asset.find(filter).select(projection).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      Asset.countDocuments(filter),
+    ]);
+
+    return c.json({
+      data: items,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    });
+  } catch (error) {
+    console.error('Error listing assets overview:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+};
+
 export const getAsset = async (c: Context) => {
   const id = c.req.param('id');
   try {
@@ -73,6 +107,18 @@ export const getAsset = async (c: Context) => {
     return c.json(asset);
   } catch (error) {
     console.error('Error fetching asset:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+};
+
+export const getAssetFees = async (c: Context) => {
+  const id = c.req.param('id');
+  try {
+    const asset = await Asset.findById(id).select('name symbol network kind status fees');
+    if (!asset) return c.json({ error: 'Asset not found' }, 404);
+    return c.json({ fees: asset.fees, asset: { _id: asset._id, name: asset.name, symbol: asset.symbol, network: asset.network, kind: asset.kind, status: asset.status } });
+  } catch (error) {
+    console.error('Error fetching asset fees:', error);
     return c.json({ error: 'Internal server error' }, 500);
   }
 };
@@ -102,6 +148,48 @@ export const updateAsset = async (c: Context) => {
       return c.json({ error: 'Duplicate asset for network (symbol or tokenAddress already exists).' }, 409);
     }
     console.error('Error updating asset:', error);
+    return c.json({ error: 'Internal server error' }, 500);
+  }
+};
+
+export const updateAssetFees = async (c: Context) => {
+  const id = c.req.param('id');
+  const payload = c.req.valid('json' as never) as z.infer<typeof updateAssetFeesOnlySchema>;
+
+  try {
+    const asset = await Asset.findById(id);
+    if (!asset) return c.json({ error: 'Asset not found' }, 404);
+
+    const fees = (asset as any).fees || {};
+
+    const applyTerm = (dst: any, src: any) => {
+      if (!src) return;
+      dst.REG = dst.REG || { d7: 0, d30: 0, d180: 0, d365: 0 };
+      dst.PRO = dst.PRO || { d7: 0, d30: 0, d180: 0, d365: 0 };
+      if (src.REG) dst.REG = { ...dst.REG, ...src.REG };
+      if (src.PRO) dst.PRO = { ...dst.PRO, ...src.PRO };
+    };
+
+    const applyPercent = (dst: any, src: any) => {
+      if (!src) return;
+      dst.REG = dst.REG ?? 0; dst.PRO = dst.PRO ?? 0;
+      if (src.REG !== undefined) dst.REG = src.REG;
+      if (src.PRO !== undefined) dst.PRO = src.PRO;
+    };
+
+    const updated: any = { ...fees };
+    applyTerm(updated.loanInterest = updated.loanInterest || {}, payload.loanInterest);
+    applyTerm(updated.savingsInterest = updated.savingsInterest || {}, payload.savingsInterest);
+    applyPercent(updated.sendFeePercent = updated.sendFeePercent || {}, payload.sendFeePercent);
+    applyPercent(updated.receiveFeePercent = updated.receiveFeePercent || {}, payload.receiveFeePercent);
+    applyPercent(updated.exchangeFeePercentFrom = updated.exchangeFeePercentFrom || {}, payload.exchangeFeePercentFrom);
+    applyPercent(updated.exchangeFeePercentTo = updated.exchangeFeePercentTo || {}, payload.exchangeFeePercentTo);
+    applyPercent(updated.referralFeePercent = updated.referralFeePercent || {}, payload.referralFeePercent);
+
+    const saved = await Asset.findByIdAndUpdate(id, { $set: { fees: updated } }, { new: true });
+    return c.json({ message: 'Fees updated', fees: saved?.fees });
+  } catch (error) {
+    console.error('Error updating asset fees:', error);
     return c.json({ error: 'Internal server error' }, 500);
   }
 };

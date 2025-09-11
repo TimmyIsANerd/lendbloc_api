@@ -51,6 +51,12 @@
     "start": "bun run --watch index.ts",
     "test": "bun test",
     "seed": "bun run seeds/seed.ts",
-    "seed:drop": "bun run seeds/drop.ts"
+    "seed:drop": "bun run seeds/drop.ts",
+    "seed:assets:cmc": "bun run seeds/seed_cmc_assets.ts",
+    "seed:assets:drop": "bun run seeds/drop_assets.ts",
+    "seed:admin": "bun run seeds/seed_admin.ts",
+    "migrate:balances": "bun run seeds/migrate_wallet_balances_to_user_balances.ts",
+    "accrue:savings": "bun run seeds/accrue_savings_interest.ts",
+    "seed:user:balances": "bun run seeds/seed_user_balances.ts"
   }
 }

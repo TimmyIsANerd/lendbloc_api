@@ -32,17 +32,22 @@ export interface IAsset extends Document {
       REG: TermInterest;
       PRO: TermInterest;
     };
-    savingsInterest: TermInterest;
-    sendFeePercent: number;
-    receiveFeePercent: number;
-    exchangeFeePercent: number;
-    referralFeePercent: number;
+    savingsInterest: {
+      REG: TermInterest;
+      PRO: TermInterest;
+    };
+    sendFeePercent: { REG: number; PRO: number };
+    receiveFeePercent: { REG: number; PRO: number };
+    exchangeFeePercentFrom: { REG: number; PRO: number };
+    exchangeFeePercentTo: { REG: number; PRO: number };
+    referralFeePercent: { REG: number; PRO: number };
   };
   createdAt: Date;
   updatedAt: Date;
 }
 
 const defaultTermInterest: TermInterest = { d7: 0, d30: 0, d180: 0, d365: 0 };
+const defaultSplitPercent = { REG: 0, PRO: 0 };
 
 const AssetSchema: Schema = new Schema(
   {
@@ -101,35 +106,65 @@ const AssetSchema: Schema = new Schema(
           savingsInterest: {
             type: new Schema(
               {
-                d7: { type: Number, default: 0 },
-                d30: { type: Number, default: 0 },
-                d180: { type: Number, default: 0 },
-                d365: { type: Number, default: 0 },
+                REG: {
+                  type: new Schema(
+                    {
+                      d7: { type: Number, default: 0 },
+                      d30: { type: Number, default: 0 },
+                      d180: { type: Number, default: 0 },
+                      d365: { type: Number, default: 0 },
+                    },
+                    { _id: false }
+                  ),
+                  required: true,
+                  default: defaultTermInterest,
+                },
+                PRO: {
+                  type: new Schema(
+                    {
+                      d7: { type: Number, default: 0 },
+                      d30: { type: Number, default: 0 },
+                      d180: { type: Number, default: 0 },
+                      d365: { type: Number, default: 0 },
+                    },
+                    { _id: false }
+                  ),
+                  required: true,
+                  default: defaultTermInterest,
+                },
               },
               { _id: false }
             ),
             required: true,
-            default: defaultTermInterest,
+            default: { REG: defaultTermInterest, PRO: defaultTermInterest },
           },
-          sendFeePercent: { type: Number, default: 0 },
-          receiveFeePercent: { type: Number, default: 0 },
-          exchangeFeePercentFrom: { type: Number, default: 0 },
-          exchangeFeePercentTo: { type: Number, default: 0 },
-          // Deprecated: kept for backward-compat reading/fallback
-          exchangeFeePercent: { type: Number },
-          referralFeePercent: { type: Number, default: 0 },
+          sendFeePercent: {
+            type: new Schema({ REG: { type: Number, default: 0 }, PRO: { type: Number, default: 0 } }, { _id: false })
+          },
+          receiveFeePercent: {
+            type: new Schema({ REG: { type: Number, default: 0 }, PRO: { type: Number, default: 0 } }, { _id: false })
+          },
+          exchangeFeePercentFrom: {
+            type: new Schema({ REG: { type: Number, default: 0 }, PRO: { type: Number, default: 0 } }, { _id: false })
+          },
+          exchangeFeePercentTo: {
+            type: new Schema({ REG: { type: Number, default: 0 }, PRO: { type: Number, default: 0 } }, { _id: false })
+          },
+          referralFeePercent: {
+            type: new Schema({ REG: { type: Number, default: 0 }, PRO: { type: Number, default: 0 } }, { _id: false })
+          },
         },
         { _id: false }
       ),
       required: true,
       default: {
         loanInterest: { REG: defaultTermInterest, PRO: defaultTermInterest },
-        savingsInterest: defaultTermInterest,
-        sendFeePercent: 0,
-        receiveFeePercent: 0,
-        exchangeFeePercentFrom: 0,
-        exchangeFeePercentTo: 0,
-        referralFeePercent: 0,
+        savingsInterest: { REG: defaultTermInterest, PRO: defaultTermInterest },
+        sendFeePercent: defaultSplitPercent,
+        receiveFeePercent: defaultSplitPercent,
+        exchangeFeePercentFrom: defaultSplitPercent,
+        exchangeFeePercentTo: defaultSplitPercent,
+        referralFeePercent: defaultSplitPercent,
       },
     },
   },
