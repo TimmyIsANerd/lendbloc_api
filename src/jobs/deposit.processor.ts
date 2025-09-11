@@ -60,6 +60,11 @@ depositQueue.setProcessor(async (payload: TatumIncomingPayload) => {
         txHash: txId,
         network: walletNet,
         contractAddress: contractAddress,
+        // audit fields
+        grossAmount: amountNum,
+        netAmount: amountNum,
+        feePercent: 0,
+        feeAmount: 0,
       });
       return;
     }
@@ -104,6 +109,11 @@ depositQueue.setProcessor(async (payload: TatumIncomingPayload) => {
     txHash: txId,
     network: walletNet,
     contractAddress: isToken ? contractAddress : undefined,
+    // audit fields
+    grossAmount: amountNum,
+    netAmount: netAmount,
+    feePercent: receiveFeePercent,
+    feeAmount: amountNum - netAmount,
   });
 
   // Trigger relocation asynchronously (we are already async) from base wallet
