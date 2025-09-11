@@ -8,7 +8,7 @@ export const listUserBalances = async (c: Context) => {
   try {
     // Fetch all LISTED assets the platform supports
     const assets = await Asset.find({ status: 'LISTED' })
-      .select('name symbol iconUrl network kind tokenAddress decimals status')
+      .select('name symbol iconUrl network kind tokenAddress decimals status currentPrice')
       .sort({ marketCap: -1, symbol: 1 });
 
     // Fetch existing balances for the user
@@ -39,7 +39,8 @@ export const listUserBalances = async (c: Context) => {
     const data = assets.map((asset) => {
       const b = balMap.get(String(asset._id));
       const balance = b?.balance ?? 0;
-      const usdPrice = usdRates.get(asset.symbol) ?? 0;
+      const fetchedPrice = usdRates.get(asset.symbol) ?? 0;
+      const usdPrice = (fetchedPrice && fetchedPrice > 0) ? fetchedPrice : (asset as any).currentPrice || 0;
       const usdValue = balance * usdPrice;
       totalUsd += usdValue;
       return {
