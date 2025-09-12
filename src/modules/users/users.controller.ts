@@ -9,13 +9,15 @@ import {
   updatePasswordChangeSchema,
   requestEmailChangeSchema,
   validateEmailChangeOTPSchema,
-  updateEmailChangeSchema
+  updateEmailChangeSchema,
+  listUserTransactionsSchema,
 } from './users.validation';
 import { generateOtp } from '../../helpers/otp/index';
 import { sendEmail } from '../../helpers/email/index';
 import { passwordResetRequestEmail } from '../../templates/password-reset-request';
 import { otpVerificationEmail } from '../../templates/otp-verification';
 import Otp from '../../models/Otp';
+import Transaction from '../../models/Transaction';
 
 export const getUserProfile = async (c: Context) => {
   const userId = c.get('jwtPayload').userId; // Assuming userId is set by a JWT middleware
@@ -241,6 +243,50 @@ export const updateEmailChange = async (c: Context) => {
     return c.json({ message: 'Email updated successfully', userId: user._id });
   } catch (error) {
     console.error('Error updating email:', error);
+    return c.json({ error: 'An unexpected error occurred' }, 500);
+  }
+}
+
+// Get authenticated user's transaction history filtered by token asset
+export const getUserTransactionsByAsset = async (c: Context) => {
+  const userId = c.get('jwtPayload').userId;
+  const { assetSymbol, contractAddress, page, limit, status, type } = c.req.valid('query' as never) as z.infer<typeof listUserTransactionsSchema>;
+
+  const pageNum = page ?? 1;
+  const limitNum = limit ?? 20;
+  const skip = (pageNum - 1) * limitNum;
+
+  const filters: Record<string, any> = { user: userId };
+  if (assetSymbol) {
+    filters.asset = assetSymbol.toUpperCase();
+  }
+  if (contractAddress) {
+    filters.contractAddress = contractAddress;
+  }
+  if (status) {
+    filters.status = status;
+  }
+  if (type) {
+    filters.type = type;
+  }
+
+  try {
+    const [records, total] = await Promise.all([
+      Transaction.find(filters).sort({ createdAt: -1 }).skip(skip).limit(limitNum),
+      Transaction.countDocuments(filters),
+    ]);
+
+    return c.json({
+      data: records,
+      meta: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum) || 1,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching user transactions by asset:', error);
     return c.json({ error: 'An unexpected error occurred' }, 500);
   }
 }

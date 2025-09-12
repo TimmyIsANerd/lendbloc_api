@@ -67,7 +67,7 @@ export const getUserBalanceByAsset = async (c: Context) => {
   const userId = c.get('jwtPayload').userId;
   const assetId = c.req.param('id');
   try {
-    const asset = await Asset.findById(assetId).select('name symbol iconUrl network kind tokenAddress decimals status');
+    const asset = await Asset.findById(assetId).select('name symbol iconUrl network kind tokenAddress decimals status currentPrice');
     if (!asset || asset.status !== 'LISTED') {
       return c.json({ error: 'Asset not found or not listed' }, 404);
     }
@@ -76,14 +76,23 @@ export const getUserBalanceByAsset = async (c: Context) => {
       .select('assetId balance locked createdAt updatedAt')
       .lean();
 
+    // Fetch USD price for this asset using the same logic as listUserBalances
+    const rates = await getUsdRatesForNetwork(asset.network, [asset.symbol]);
+    const fetchedPrice = rates.get(asset.symbol) ?? 0;
+    const usdPrice = (fetchedPrice && fetchedPrice > 0) ? fetchedPrice : (asset as any).currentPrice || 0;
+
     if (!bal) {
       return c.json({
         userId,
         assetId: asset,
         balance: 0,
         locked: 0,
+        usdPrice,
+        usdValue: 0,
       });
     }
+
+    const usdValue = (bal.balance ?? 0) * usdPrice;
 
     return c.json({
       _id: bal._id,
@@ -91,6 +100,8 @@ export const getUserBalanceByAsset = async (c: Context) => {
       assetId: asset,
       balance: bal.balance,
       locked: bal.locked,
+      usdPrice,
+      usdValue,
       createdAt: bal.createdAt,
       updatedAt: bal.updatedAt,
     });

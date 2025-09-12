@@ -1,7 +1,7 @@
 import { TatumSDK, Network } from '@tatumio/tatum'
 
 // Map our internal network keys to Tatum networks (best-effort)
-const mapToTatumNetwork = (net: string): Network => {
+export const mapToTatumNetwork = (net: string): Network => {
   switch (net) {
     case 'ETH':
       return Network.ETHEREUM

@@ -8,7 +8,8 @@ import {
     updatePasswordChange,
     requestEmailChange,
     validateEmailChangeOTP,
-    updateEmailChange
+    updateEmailChange,
+    getUserTransactionsByAsset,
 } from './users.controller';
 import { 
     updateUserProfileSchema, 
@@ -17,7 +18,8 @@ import {
     validatePasswordChangeOTPSchema,
     requestEmailChangeSchema,
     validateEmailChangeOTPSchema,
-    updateEmailChangeSchema
+    updateEmailChangeSchema,
+    listUserTransactionsSchema,
 } from './users.validation';
 import { authMiddleware } from '../../middleware/auth';
 
@@ -26,6 +28,9 @@ const users = new Hono();
 users.use('/*', authMiddleware);
 users.get('/profile', getUserProfile);
 users.put('/profile', zValidator('json', updateUserProfileSchema), updateUserProfile);
+
+// List user transactions filtered by token asset (symbol or contract address)
+users.get('/transactions', zValidator('query', listUserTransactionsSchema), getUserTransactionsByAsset);
 
 users.post("/request-password-change", zValidator('json', requestPasswordChangeSchema), requestPasswordChange);
 users.post("/validate-password-change-otp", zValidator('json', validatePasswordChangeOTPSchema), validatePasswordChangeOTP);

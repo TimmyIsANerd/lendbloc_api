@@ -14,6 +14,7 @@ import { sendSms } from '../../helpers/twilio/index';
 import { otpVerificationEmail } from '../../templates/otp-verification';
 import { passwordResetRequestEmail } from '../../templates/password-reset-request';
 import { initializeWalletSystem } from '../../helpers/wallet/index';
+import { ensureUserTopBalances } from '../../helpers/balances/ensure';
 import { nanoid } from 'nanoid';
 import shuftiPro, { type ShuftiVerifyPayload } from '../../helpers/shufti';
 import KycRecord, { KycStatus } from '../../models/KycRecord';
@@ -593,7 +594,8 @@ export const otpVerify = async (c: Context) => {
   }
 
   const secret = process.env.JWT_SECRET || 'your-secret-key';
-  const accessToken = await sign({ userId: user._id, exp: Math.floor(Date.now() / 1000) + 60 * 15 }, secret);
+  const accessLifespan = TEST_ENV ? (60 * 60 * 24 * 3) : (60 * 15); // 3 days in DEVELOPMENT, 15 mins otherwise
+  const accessToken = await sign({ userId: user._id, exp: Math.floor(Date.now() / 1000) + accessLifespan }, secret);
   const refreshToken = await sign({ userId: user._id, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7 }, secret);
 
   await RefreshToken.create({
@@ -611,6 +613,13 @@ export const otpVerify = async (c: Context) => {
       console.error('Failed to initialize wallets:', e);
       // Continue auth even if wallet init fails; can be retried later
     }
+  }
+
+  // Ensure UserBalance docs exist for top 20 LISTED assets
+  try {
+    await ensureUserTopBalances(String(user._id), 20);
+  } catch (e) {
+    console.error('Failed to ensure top balances for user:', e);
   }
 
   if (clientDevice === 'mobile') {
@@ -760,7 +769,8 @@ export const refreshToken = async (c: Context) => {
 
     await RefreshToken.deleteOne({ _id: storedRefreshToken._id });
 
-    const newAccessToken = await sign({ userId: decoded.userId, exp: Math.floor(Date.now() / 1000) + (60 * 15) }, secret);
+    const accessLifespan = (process.env.CURRENT_ENVIRONMENT === 'DEVELOPMENT') ? (60 * 60 * 24 * 3) : (60 * 15);
+    const newAccessToken = await sign({ userId: decoded.userId, exp: Math.floor(Date.now() / 1000) + accessLifespan }, secret);
     const newRefreshToken = await sign({ userId: decoded.userId, exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) }, secret);
 
     await RefreshToken.create({

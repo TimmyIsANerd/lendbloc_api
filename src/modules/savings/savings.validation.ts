@@ -13,3 +13,18 @@ export const depositToSavingsAccountSchema = z.object({
 export const withdrawFromSavingsAccountSchema = z.object({
   amount: z.number().positive(),
 });
+
+export const idParamSchema = z.object({
+  id: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid ID'),
+});
+
+export const assetParamSchema = z.object({
+  id: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid asset ID'),
+});
+
+export const historyQuerySchema = z.object({
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});

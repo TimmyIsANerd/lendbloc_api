@@ -34,3 +34,20 @@ export const updateEmailChangeSchema = z.object({
   userId: z.string().regex(/^[0-9a-fA-F]{24}$/),
   newEmail: z.email(),
 });
+
+// List user transactions filtered by token asset
+export const listUserTransactionsSchema = z
+  .object({
+    assetSymbol: z.string().min(1, 'assetSymbol is required').optional(),
+    contractAddress: z.string().min(1).optional(),
+    type: z
+      .enum(['deposit', 'withdrawal', 'loan-repayment', 'interest-payment', 'swap', 'relocation'])
+      .optional(),
+    status: z.enum(['pending', 'completed', 'failed', 'confirmed', 'relocated']).optional(),
+    page: z.coerce.number().int().positive().optional(),
+    limit: z.coerce.number().int().positive().max(100).optional(),
+  })
+  .refine((data) => !!data.assetSymbol || !!data.contractAddress, {
+    message: 'Provide assetSymbol or contractAddress',
+    path: ['assetSymbol'],
+  });

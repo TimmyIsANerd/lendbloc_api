@@ -468,17 +468,39 @@ responses: { '200': { description: 'Deposit successful', content: { 'application
 responses: { '200': { description: 'Withdrawal successful', content: { 'application/json': { example: { message: 'Withdrawal successful', savingsAccount: { _id: '65a...', balance: 1.0 } } } } }, '404': { description: 'Savings account not found' }, '400': { description: 'Insufficient balance or locked' } },
         },
       },
+      '/api/v1/exchange/quote': {
+        post: {
+          tags: ['Exchange'],
+          summary: 'Get swap quote',
+          description: 'Returns a quoted conversion using USD parity with fees applied (amountTo is net of to-side fee).',
+          security: [{ BearerAuth: [] }],
+          requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['fromSymbol','toSymbol','amount'], properties: { fromSymbol: { type: 'string' }, toSymbol: { type: 'string' }, amount: { type: 'number' } } } } } },
+          responses: { '200': { description: 'Quote returned' }, '400': { description: 'Invalid symbols' } },
+        },
+      },
+      '/api/v1/exchange/price-change': {
+        get: {
+          tags: ['Exchange'],
+          summary: '24h price change (CMC)',
+          description: 'Fetches percent_change_24h for from and to symbols via CoinMarketCap and rounds to 2 decimals.',
+          security: [{ BearerAuth: [] }],
+          parameters: [
+            { in: 'query', name: 'from', required: true, schema: { type: 'string' } },
+            { in: 'query', name: 'to', required: true, schema: { type: 'string' } },
+          ],
+          responses: { '200': { description: 'Price changes' }, '500': { description: 'CMC error' } },
+        },
+      },
       '/api/v1/exchange/swap': {
         post: {
           tags: ['Exchange'],
-          summary: 'Swap crypto',
-description:
-            'Swaps from one asset to another. Applies split fees: fromAsset.fees.exchangeFeePercentFrom and toAsset.fees.exchangeFeePercentTo. Deducts amount+fromFee, credits net (converted - toFee).',
+          summary: 'Swap crypto (by symbol with liquidity check)',
+          description: 'Swaps from one asset to another using USD parity and applies split fees. Checks admin liquidity for destination asset (DEV uses FAKE_LIQ_{SYMBOL}). Deducts amount+fromFee, credits net (converted - toFee).',
           security: [{ BearerAuth: [] }],
-          requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['fromAssetId','toAssetId','amount'], properties: { fromAssetId: { type: 'string' }, toAssetId: { type: 'string' }, amount: { type: 'number' } } } } } },
+          requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['fromSymbol','toSymbol','amount'], properties: { fromSymbol: { type: 'string' }, toSymbol: { type: 'string' }, amount: { type: 'number' } } } } } },
           responses: {
-'200': { description: 'Swap successful', content: { 'application/json': { example: { message: 'Swap successful', amount: 1, convertedAmount: 2000, fromFeePercent: 0.2, toFeePercent: 0.3, fromFeeAmount: 0.002, toFeeAmount: 6, netReceived: 1994 } } } },
-'400': { description: 'Asset invalid/unavailable or insufficient balance' },
+            '200': { description: 'Swap successful' },
+            '400': { description: 'Asset invalid/unavailable, insufficient balance, or insufficient liquidity' },
           },
         },
       },
