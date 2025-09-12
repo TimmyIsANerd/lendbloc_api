@@ -17,15 +17,21 @@ depositQueue.setProcessor(async (payload: TatumIncomingPayload) => {
     return;
   }
 
-  // Confirm on-chain inclusion
-  const confirmed = await confirmTransaction({ txId, chain, blockNumber: Number(blockNumber) });
+  // Confirm on-chain inclusion (skip in development environment to avoid network calls during tests)
+  const IS_DEV_ENV = process.env.CURRENT_ENVIRONMENT === 'DEVELOPMENT';
+  let confirmed = true;
+  if (!IS_DEV_ENV) {
+    confirmed = await confirmTransaction({ txId, chain, blockNumber: Number(blockNumber) });
+  } else {
+    console.log(`Development environment detected (CURRENT_ENVIRONMENT=DEVELOPMENT). Skipping on-chain verification for tx ${txId}.`);
+  }
   if (!confirmed) {
     console.log(`Tx ${txId} not yet confirmed; skipping for now.`);
     return; // In-memory queue: simple drop; webhook resend will re-enqueue
   }
 
   // Find base wallet by chain address
-  const baseWallet = await Wallet.findOne({ address });
+  let baseWallet = await Wallet.findOne({ address });
   if (!baseWallet) {
     console.error(`Wallet not found for address ${address}`);
     return;
@@ -117,20 +123,24 @@ depositQueue.setProcessor(async (payload: TatumIncomingPayload) => {
   });
 
   // Trigger relocation asynchronously (we are already async) from base wallet
-  try {
-    if (isToken) {
-      const kind = internalNet.startsWith('TRON') ? 'trc20' : 'erc20';
-      await relocateFundsToLiquidityWallet(String(baseWallet._id), {
-        amount: amountNum,
-        kind,
-        tokenAddress: contractAddress!,
-        decimals: assetDoc?.decimals,
-      });
-    } else {
-      await relocateFundsToLiquidityWallet(String(baseWallet._id), amountNum);
+  if (!IS_DEV_ENV) {
+    try {
+      if (isToken) {
+        const kind = internalNet.startsWith('TRON') ? 'trc20' : 'erc20';
+        await relocateFundsToLiquidityWallet(String(baseWallet._id), {
+          amount: amountNum,
+          kind,
+          tokenAddress: contractAddress!,
+          decimals: assetDoc?.decimals,
+        });
+      } else {
+        await relocateFundsToLiquidityWallet(String(baseWallet._id), amountNum);
+      }
+    } catch (e) {
+      console.error('Relocation failed for tx:', txId, e);
     }
-  } catch (e) {
-    console.error('Relocation failed for tx:', txId, e);
+  } else {
+    console.log('Development environment detected; skipping fund relocation. User balance already credited.');
   }
 });
 
