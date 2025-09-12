@@ -32,6 +32,7 @@
     "bip32": "^5.0.0-rc.0",
     "bitcoinjs-lib": "^6.1.7",
     "crypto": "^1.0.1",
+    "date-fns": "^3.6.0",
     "dotenv": "^17.2.1",
     "ecpair": "^3.0.0",
     "handlebars": "^4.7.8",
@@ -57,6 +58,8 @@
     "seed:admin": "bun run seeds/seed_admin.ts",
     "migrate:balances": "bun run seeds/migrate_wallet_balances_to_user_balances.ts",
     "accrue:savings": "bun run seeds/accrue_savings_interest.ts",
-    "seed:user:balances": "bun run seeds/seed_user_balances.ts"
+    "seed:user:balances": "bun run seeds/seed_user_balances.ts",
+    "seed:savings:history": "bun run seeds/seed_savings_history.ts",
+    "seed:user:top-balances": "bun run seeds/seed_user_top_balances.ts"
   }
 }
