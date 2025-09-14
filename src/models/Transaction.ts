@@ -88,7 +88,7 @@ const transactionSchema = new Schema<ITransaction>({
 // Ensure txHash is unique only when present as a string
 transactionSchema.index(
   { txHash: 1 },
-  { unique: true, partialFilterExpression: { txHash: { $exists: true, $type: 'string' } } }
+  { name: 'txHash_1', unique: true, partialFilterExpression: { txHash: { $exists: true, $type: 'string' } } }
 );
 
 export default model<ITransaction>('Transaction', transactionSchema);

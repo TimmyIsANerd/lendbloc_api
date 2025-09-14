@@ -2,19 +2,24 @@ import Transaction from '../models/Transaction';
 
 export async function ensureIndexes() {
   try {
-    // Drop legacy non-partial unique index if present to avoid duplicate null errors
+    // List and drop any existing index(es) on txHash regardless of name to avoid conflicts
     try {
-      await Transaction.collection.dropIndex('txHash_1');
-      console.log('Dropped legacy index txHash_1');
-    } catch (e) {
-      // ignore if it doesn't exist
-    }
+      const idxs = await Transaction.collection.indexes();
+      for (const idx of idxs) {
+        if (idx?.key && (idx.key as any).txHash === 1) {
+          try {
+            await Transaction.collection.dropIndex(idx.name);
+            console.log(`Dropped existing txHash index: ${idx.name}`);
+          } catch {}
+        }
+      }
+    } catch {}
 
-    // Create partial unique index that only indexes documents with a real string txHash
+    // Recreate the partial unique index with a stable, conventional name
     await Transaction.collection.createIndex(
       { txHash: 1 },
       {
-        name: 'txHash_unique_nonnull',
+        name: 'txHash_1',
         unique: true,
         partialFilterExpression: { txHash: { $exists: true, $type: 'string' } },
       }
