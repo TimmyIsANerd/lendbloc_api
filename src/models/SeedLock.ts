@@ -17,6 +17,4 @@ const SeedLockSchema: Schema = new Schema(
   { timestamps: true }
 );
 
-SeedLockSchema.index({ key: 1 }, { unique: true });
-
 export default mongoose.model<ISeedLock>('SeedLock', SeedLockSchema);

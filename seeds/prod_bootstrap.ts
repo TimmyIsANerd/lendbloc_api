@@ -161,9 +161,10 @@ async function createDemoUser(label: string, opts: { balances?: Record<string, n
     for (const [symbol, amount] of Object.entries(opts.balances)) {
       const asset = await Asset.findOne({ symbol, status: 'LISTED' })
       if (asset) {
+        // Set exact target balance idempotently to avoid ConflictingUpdateOperators between $setOnInsert and $inc
         await UserBalance.findOneAndUpdate(
           { userId: user._id, assetId: asset._id },
-          { $setOnInsert: { balance: 0 }, $inc: { balance: amount } },
+          { $set: { balance: amount } },
           { upsert: true }
         )
       }
