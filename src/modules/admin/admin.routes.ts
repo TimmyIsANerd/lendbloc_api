@@ -61,4 +61,8 @@ admin.get('/loans', getLoans);
 admin.get('/savings', getSavings);
 admin.get('/transactions', getTransactions);
 
+// Profit analytics
+admin.get('/analytics/profit/summary', zValidator('query', profitRangeSchema), async (c) => profitSummary(c));
+admin.get('/analytics/profit/series', zValidator('query', profitSeriesQuerySchema), async (c) => profitSeries(c));
+
 export default admin;

@@ -71,3 +71,15 @@ export const adminInviteSchema = z.object({
     email: z.string().email(),
     role: z.enum(["ADMIN", "SUPER_ADMIN"]).optional().default("ADMIN"),
 });
+
+// Profit analytics
+export const profitRangeSchema = z.object({
+  range: z.enum(['24h','day','prevDay','week','month','6m','all']).default('month'),
+  includeEstimated: z.coerce.boolean().optional(),
+});
+
+export const profitSeriesQuerySchema = z.object({
+  range: z.enum(['24h','day','prevDay','week','month','6m','all']).default('6m'),
+  bucket: z.enum(['day','week','month']).default('day'),
+  includeEstimated: z.coerce.boolean().optional(),
+});

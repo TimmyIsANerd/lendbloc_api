@@ -1,4 +1,8 @@
 import { type Context } from 'hono';
+import { z } from 'zod';
+import { profitRangeSchema, profitSeriesQuerySchema } from './admin.validation';
+import RevenueEvent from '../../models/RevenueEvent';
+import { startOfDay, endOfDay, startOfWeek, startOfMonth, subDays, subMonths, format } from 'date-fns';
 import User, { AccountStatus } from '../../models/User';
 import Loan from '../../models/Loan';
 import SavingsAccount from '../../models/SavingsAccount';
@@ -172,6 +176,48 @@ export const getSavings = async (c: Context) => {
 export const getTransactions = async (c: Context) => {
   const transactions = await Transaction.find();
   return c.json(transactions);
+};
+
+function getRangeBounds(range: string) {
+  const now = new Date();
+  switch (range) {
+    case '24h': return { from: new Date(now.getTime() - 24*60*60*1000), to: now };
+    case 'day': return { from: startOfDay(now), to: now };
+    case 'prevDay': { const y = subDays(startOfDay(now), 1); return { from: y, to: endOfDay(y) }; }
+    case 'week': return { from: startOfWeek(now), to: now };
+    case 'month': return { from: startOfMonth(now), to: now };
+    case '6m': return { from: subMonths(now, 6), to: now };
+    case 'all': default: return { from: new Date(0), to: now };
+  }
+}
+
+export const profitSummary = async (c: Context) => {
+  const { range, includeEstimated } = c.req.valid('query' as never) as z.infer<typeof profitRangeSchema>;
+  const { from, to } = getRangeBounds(range);
+  const match: any = { createdAt: { $gte: from, $lte: to } };
+  if (!includeEstimated) match.type = { $ne: 'interest-accrual' };
+
+  const events = await RevenueEvent.find(match).select('type amountUsd').lean();
+  const byType = events.reduce((acc: any, e: any) => { acc[e.type] = (acc[e.type] || 0) + (Number(e.amountUsd) || 0); return acc; }, {} as Record<string, number>);
+  const totalUsd = Object.values(byType).reduce((a: number, b: any) => a + Number(b || 0), 0);
+  return c.json({ range, totalUsd: Number(totalUsd.toFixed(2)), byType: Object.fromEntries(Object.entries(byType).map(([k,v]) => [k, Number((v as number).toFixed(2))])) });
+};
+
+export const profitSeries = async (c: Context) => {
+  const { range, bucket, includeEstimated } = c.req.valid('query' as never) as z.infer<typeof profitSeriesQuerySchema>;
+  const { from, to } = getRangeBounds(range);
+  const match: any = { createdAt: { $gte: from, $lte: to } };
+  if (!includeEstimated) match.type = { $ne: 'interest-accrual' };
+
+  const events = await RevenueEvent.find(match).select('amountUsd createdAt').lean();
+  const fmt = bucket === 'month' ? 'yyyy-MM' : 'yyyy-MM-dd';
+  const sums = new Map<string, number>();
+  for (const e of events) {
+    const key = format(new Date(e.createdAt), fmt);
+    sums.set(key, (sums.get(key) || 0) + (Number(e.amountUsd) || 0));
+  }
+  const items = Array.from(sums.entries()).sort((a,b) => a[0].localeCompare(b[0])).map(([period, amountUsd]) => ({ period, amountUsd: Number(amountUsd.toFixed(2)) }));
+  return c.json({ range, bucket, items });
 };
 
 export const adminRegister = async (c: Context) => {
