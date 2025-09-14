@@ -9,6 +9,7 @@ import User, { AccountType } from '../src/models/User'
 import Wallet from '../src/models/Wallet'
 import UserBalance from '../src/models/UserBalance'
 import SavingsAccount from '../src/models/SavingsAccount'
+import SavingsEarning from '../src/models/SavingsEarning'
 import Loan from '../src/models/Loan'
 import Transaction from '../src/models/Transaction'
 import SeedLock from '../src/models/SeedLock'
@@ -193,11 +194,21 @@ async function seedDemoProfile() {
   if (ethAsset) {
     const now = new Date()
     const lockEndAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
-    await SavingsAccount.findOneAndUpdate(
+    const saA = await SavingsAccount.findOneAndUpdate(
       { userId: demoA._id, assetId: ethAsset._id, status: 'ACTIVE' },
       { $setOnInsert: { balance: 0.2, apy: 4, termDays: 30, lockStartAt: now, lockEndAt, lastPayoutAt: now, status: 'ACTIVE' } },
-      { upsert: true }
+      { upsert: true, new: true }
     )
+    const baseA = new Date()
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(baseA.getFullYear(), baseA.getMonth() - i, 15)
+      const amount = 0.008 + (i % 4) * 0.003
+      await SavingsEarning.findOneAndUpdate(
+        { userId: demoA._id, assetId: ethAsset._id, savingsAccountId: saA!._id, accruedAt: d },
+        { $setOnInsert: { amount, apy: 4, termDays: 30 } },
+        { upsert: true }
+      )
+    }
   }
 
   // Demo B: active loan + alerts
@@ -231,6 +242,23 @@ async function seedDemoProfile() {
       alerts: { interest: { thresholds: [25, 50, 75, 90] }, collateral: { dipping: true, thresholds: [-25, -50] } }
     } as any)
     await Transaction.create({ user: demoB._id as any, type: 'interest-accrual', amount: borrowAmount * 0.05, asset: usdtEth.symbol, status: 'completed', loanId: loan._id })
+
+    const nowB = new Date()
+    const saB = await SavingsAccount.findOneAndUpdate(
+      { userId: demoB._id, assetId: ethAsset._id, status: 'ACTIVE' },
+      { $setOnInsert: { balance: 0.1, apy: 4, termDays: 30, lockStartAt: nowB, lockEndAt: new Date(nowB.getTime() + 30*24*60*60*1000), lastPayoutAt: nowB, status: 'ACTIVE' } },
+      { upsert: true, new: true }
+    )
+    const baseB = new Date()
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(baseB.getFullYear(), baseB.getMonth() - i, 15)
+      const amount = 0.006 + (i % 3) * 0.002
+      await SavingsEarning.findOneAndUpdate(
+        { userId: demoB._id, assetId: ethAsset._id, savingsAccountId: saB!._id, accruedAt: d },
+        { $setOnInsert: { amount, apy: 4, termDays: 30 } },
+        { upsert: true }
+      )
+    }
   }
 
   // Demo C: pending collateral + swap
@@ -264,6 +292,23 @@ async function seedDemoProfile() {
     )
     // Simple swap transaction sample
     await Transaction.create({ user: demoC._id as any, type: 'swap', amount: 10, asset: 'USDT', status: 'completed', swapDetails: { fromSymbol: 'ETH', toSymbol: 'USDT', fromAmountToken: 0.004, toAmountToken: 10, fromAmountUsd: 10, toAmountUsd: 10, rateFromUsd: 2500, rateToUsd: 1 } as any })
+
+    const nowC = new Date()
+    const saC = await SavingsAccount.findOneAndUpdate(
+      { userId: demoC._id, assetId: ethAsset._id, status: 'ACTIVE' },
+      { $setOnInsert: { balance: 0.05, apy: 4, termDays: 30, lockStartAt: nowC, lockEndAt: new Date(nowC.getTime() + 30*24*60*60*1000), lastPayoutAt: nowC, status: 'ACTIVE' } },
+      { upsert: true, new: true }
+    )
+    const baseC = new Date()
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(baseC.getFullYear(), baseC.getMonth() - i, 15)
+      const amount = 0.004 + (i % 2) * 0.002
+      await SavingsEarning.findOneAndUpdate(
+        { userId: demoC._id, assetId: ethAsset._id, savingsAccountId: saC!._id, accruedAt: d },
+        { $setOnInsert: { amount, apy: 4, termDays: 30 } },
+        { upsert: true }
+      )
+    }
   }
 
   // Demo D: interest analytics user

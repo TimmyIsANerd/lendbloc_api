@@ -66,6 +66,8 @@
     "seed:lending:active-loan": "bun run seeds/seed_active_loan.ts",
     "seed:lending:alerts-loan": "bun run seeds/seed_loan_with_alerts.ts",
     "seed:prod:demo": "bun run seeds/prod_bootstrap.ts",
+    "seed:analytics-user": "bun run seeds/seed_interest_analytics_user.ts",
+    "seed:analytics-all": "bun run seeds/seed_interest_all_users.ts",
     "deploy:render": "bash scripts/deploy.sh"
   }
 }
