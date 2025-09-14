@@ -68,6 +68,8 @@
     "seed:prod:demo": "bun run seeds/prod_bootstrap.ts",
     "seed:analytics-user": "bun run seeds/seed_interest_analytics_user.ts",
     "seed:analytics-all": "bun run seeds/seed_interest_all_users.ts",
+    "seed:admin:profit": "bun run seeds/seed_admin_profit.ts",
+    "backfill:revenue": "bun run seeds/backfill_revenue_from_events.ts",
     "deploy:render": "bash scripts/deploy.sh"
   }
 }
