@@ -6,8 +6,11 @@ export interface IWallet extends Document {
   address: string;
   balance: number;
   encryptedMnemonic: string;
-  network: string; // BSC, ETH, TRON, BTC
+  network: string; // BSC, ETH, TRON, BTC, LTC
   isLiquidityWallet: boolean;
+  // Loan-collateral specific flags
+  isLoanCollateral?: boolean;
+  loanId?: mongoose.Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -20,7 +23,9 @@ const WalletSchema: Schema = new Schema(
     balance: { type: Number, required: true, default: 0 },
     encryptedMnemonic: { type: String, required: true },
     isLiquidityWallet: { type: Boolean, default: false },
-    network: { type: String, required: true, enum: ['BSC', 'ETH', 'TRON', 'BTC', 'LTC'] }
+    network: { type: String, required: true, enum: ['BSC', 'ETH', 'TRON', 'BTC', 'LTC'] },
+    isLoanCollateral: { type: Boolean, default: false },
+    loanId: { type: Schema.Types.ObjectId, ref: 'Loan', default: null },
   },
   { timestamps: true }
 );

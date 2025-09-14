@@ -60,6 +60,10 @@
     "accrue:savings": "bun run seeds/accrue_savings_interest.ts",
     "seed:user:balances": "bun run seeds/seed_user_balances.ts",
     "seed:savings:history": "bun run seeds/seed_savings_history.ts",
-    "seed:user:top-balances": "bun run seeds/seed_user_top_balances.ts"
+    "seed:user:top-balances": "bun run seeds/seed_user_top_balances.ts",
+    "seed:lending:assets": "bun run seeds/seed_lending_assets.ts",
+    "seed:lending:pending-loan": "bun run seeds/seed_pending_loan.ts",
+    "seed:lending:active-loan": "bun run seeds/seed_active_loan.ts",
+    "seed:lending:alerts-loan": "bun run seeds/seed_loan_with_alerts.ts"
   }
 }

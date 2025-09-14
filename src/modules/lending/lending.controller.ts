@@ -8,64 +8,8 @@ import { termKeyFromDays } from '../../helpers/assets/terms';
 import { createLoanSchema, repayLoanSchema } from './lending.validation';
 
 export const createLoan = async (c: Context) => {
-  const userId = c.get('jwtPayload').userId;
-  const { assetId, amount, collateralAssetId, collateralAmount, termDays } = c.req.valid('json' as never) as z.infer<
-    typeof createLoanSchema
-  >;
-
-  try {
-    const collateralAsset = await Asset.findById(collateralAssetId);
-    const loanAsset = await Asset.findById(assetId);
-
-    if (!collateralAsset || !loanAsset) {
-      return c.json({ error: 'Invalid asset ID' }, 400);
-    }
-
-    // Enforce that both assets are LISTED for lending operations
-    if (collateralAsset.status !== 'LISTED' || loanAsset.status !== 'LISTED') {
-      return c.json({ error: 'Selected assets are not available for lending' }, 400);
-    }
-
-    // Check if user has enough collateral in their balance
-    const userCollateralBal = await UserBalance.findOne({ userId, assetId: collateralAsset._id });
-
-    if (!userCollateralBal || userCollateralBal.balance < collateralAmount) {
-      return c.json({ error: 'Insufficient collateral balance' }, 400);
-    }
-
-    // Calculate LTV (Loan-to-Value)
-    const ltv = (amount * loanAsset.currentPrice) / (collateralAmount * collateralAsset.currentPrice);
-
-    // Resolve interest by account type and term from asset fees (percent)
-    const userDoc = await User.findById(userId).select('accountType');
-    const acctType = (userDoc?.accountType ?? 'REG') as 'REG' | 'PRO';
-    const tKey = termKeyFromDays(termDays as 7 | 30 | 180 | 365);
-    const interestRate = loanAsset.fees?.loanInterest?.[acctType]?.[tKey] ?? 0;
-
-    // Create the loan
-    const loan = await Loan.create({
-      userId,
-      collateralAssetId: collateralAsset._id,
-      collateralAmount,
-      loanAssetId: loanAsset._id,
-      loanAmount: amount,
-      ltv,
-      interestRate, // percent
-      termDays,
-      status: LoanStatus.ACTIVE,
-    });
-
-    // Lock collateral: move from balance to locked
-    await UserBalance.updateOne(
-      { userId, assetId: collateralAsset._id },
-      { $inc: { balance: -collateralAmount, locked: collateralAmount } }
-    );
-
-    return c.json({ message: 'Loan created successfully', loan });
-  } catch (error) {
-    console.error('Error creating loan:', error);
-    return c.json({ error: 'An unexpected error occurred' }, 500);
-  }
+  // Deprecated direct-loan path retained for backward compat; advise using quote + from-quote flow
+  return c.json({ error: 'Deprecated endpoint. Use /api/v1/lending/quotes then /loans/from-quote.' }, 410);
 };
 
 export const repayLoan = async (c: Context) => {

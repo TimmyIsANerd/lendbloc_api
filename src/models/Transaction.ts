@@ -1,8 +1,20 @@
 import { Schema, model, Document } from 'mongoose';
 
+export type TransactionType =
+  | 'deposit'
+  | 'withdrawal'
+  | 'loan-repayment'
+  | 'interest-payment'
+  | 'interest-accrual'
+  | 'loan-disbursement'
+  | 'liquidation'
+  | 'margin-call'
+  | 'swap'
+  | 'relocation';
+
 export interface ITransaction extends Document {
   user: Schema.Types.ObjectId;
-  type: 'deposit' | 'withdrawal' | 'loan-repayment' | 'interest-payment' | 'swap' | 'relocation';
+  type: TransactionType;
   amount: number; // net amount (kept for backward-compat)
   asset: string;
   status: 'pending' | 'completed' | 'failed' | 'confirmed' | 'relocated';
@@ -20,8 +32,8 @@ export interface ITransaction extends Document {
     toAssetId?: Schema.Types.ObjectId;
     fromSymbol?: string;
     toSymbol?: string;
-    fromAmountToken?: number; // debited from user (excluding from-side fee?)
-    toAmountToken?: number;   // credited to user (net of to-side fee)
+    fromAmountToken?: number;
+    toAmountToken?: number;
     fromAmountUsd?: number;
     toAmountUsd?: number;
     fromFeePercent?: number;
@@ -31,6 +43,8 @@ export interface ITransaction extends Document {
     rateFromUsd?: number;
     rateToUsd?: number;
   };
+  // Loan relations (optional)
+  loanId?: Schema.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -54,11 +68,11 @@ const swapDetailsSchema = new Schema({
 
 const transactionSchema = new Schema<ITransaction>({
   user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  type: { type: String, enum: ['deposit', 'withdrawal', 'loan-repayment', 'interest-payment', 'swap', 'relocation'], required: true },
+  type: { type: String, enum: ['deposit','withdrawal','loan-repayment','interest-payment','interest-accrual','loan-disbursement','liquidation','margin-call','swap','relocation'], required: true },
   amount: { type: Number, required: true },
   asset: { type: String, required: true },
   status: { type: String, enum: ['pending', 'completed', 'failed', 'confirmed', 'relocated'], default: 'pending' },
-  txHash: { type: String, unique: true },
+  txHash: { type: String },
   network: { type: String },
   contractAddress: { type: String },
   // Audit fields
@@ -67,7 +81,14 @@ const transactionSchema = new Schema<ITransaction>({
   feePercent: { type: Number },
   feeAmount: { type: Number },
   swapDetails: { type: swapDetailsSchema },
+  loanId: { type: Schema.Types.ObjectId, ref: 'Loan' },
   createdAt: { type: Date, default: Date.now },
 }, { timestamps: true });
+
+// Ensure txHash is unique only when present as a string
+transactionSchema.index(
+  { txHash: 1 },
+  { unique: true, partialFilterExpression: { txHash: { $exists: true, $type: 'string' } } }
+);
 
 export default model<ITransaction>('Transaction', transactionSchema);

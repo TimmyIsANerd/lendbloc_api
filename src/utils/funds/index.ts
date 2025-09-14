@@ -480,3 +480,58 @@ async function handleUtxoRelocation(userWallet: any, userMnemonic: string, liqui
     await tatum.destroy();
     console.log(`${coin}: Relocation logic completed.`);
 }
+
+// --- Send from Liquidity Wallet to external address (loan disbursement) ---
+export async function sendFromLiquidityWallet(params: { asset: any; to: string; amountToken: number }): Promise<{ txHash?: string }> {
+    const { asset, to, amountToken } = params;
+    if (!asset) throw new Error('Missing asset for disbursement');
+    const network = String(asset.network || '');
+
+    const liquidityWallet = await Wallet.findOne({ isLiquidityWallet: true, network });
+    if (!liquidityWallet || !liquidityWallet.encryptedMnemonic) throw new Error(`Liquidity wallet not found for network ${network}`);
+    const liquidityMnemonic = decryptMnemonic(liquidityWallet.encryptedMnemonic);
+
+    // EVM
+    if (network.startsWith('ETH')) {
+        const chain = getViemChain(network);
+        const publicClient = createPublicClient({ chain, transport: getRpcTransport(network, chain) });
+        const account = mnemonicToAccount(liquidityMnemonic);
+        const walletClient = createWalletClient({ account, chain, transport: getRpcTransport(network, chain) });
+
+        if (asset.kind === 'erc20' && asset.tokenAddress) {
+            const decimals = BigInt(asset.decimals ?? 6);
+            const tokenAmount = parseUnits(amountToken.toString(), decimals);
+            const txHash = await walletClient.writeContract({
+                account,
+                address: asset.tokenAddress as `0x${string}`,
+                abi: ERC20_MIN_ABI as any,
+                functionName: 'transfer',
+                args: [to as `0x${string}`, tokenAmount],
+            });
+            await publicClient.waitForTransactionReceipt({ hash: txHash });
+            return { txHash };
+        } else {
+            const txHash = await walletClient.sendTransaction({ account, to: to as `0x${string}`, value: parseEther(amountToken.toString()) });
+            await publicClient.waitForTransactionReceipt({ hash: txHash });
+            return { txHash };
+        }
+    }
+
+    // TRON
+    if (network.startsWith('TRON')) {
+        const tatum = await TatumSDK.init<Tron>({ network: getTatumNetwork(network), configureWalletProviders: [TronWalletProvider] });
+        const tron = tatum.walletProvider.use(TronWalletProvider);
+        const pk = await tron.generatePrivateKeyFromMnemonic(liquidityMnemonic, 0);
+        if (asset.kind === 'trc20' && asset.tokenAddress) {
+            const res = await tron.sendTrc20({ fromPrivateKey: pk, to, tokenAddress: asset.tokenAddress, amount: amountToken.toString() });
+            await tatum.destroy();
+            return { txHash: res.txId };
+        } else {
+            const res = await tron.sendTrx({ fromPrivateKey: pk, to, amount: amountToken.toString() });
+            await tatum.destroy();
+            return { txHash: res.txId };
+        }
+    }
+
+    throw new Error(`Unsupported disbursement network: ${network}`);
+}
