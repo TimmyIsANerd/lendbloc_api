@@ -265,6 +265,44 @@ async function seedDemoProfile() {
     // Simple swap transaction sample
     await Transaction.create({ user: demoC._id as any, type: 'swap', amount: 10, asset: 'USDT', status: 'completed', swapDetails: { fromSymbol: 'ETH', toSymbol: 'USDT', fromAmountToken: 0.004, toAmountToken: 10, fromAmountUsd: 10, toAmountUsd: 10, rateFromUsd: 2500, rateToUsd: 1 } as any })
   }
+
+  // Demo D: interest analytics user
+  const interestUser = await User.findOne({ email: 'demo.interest@lendbloc.local' })
+  const eth = await Asset.findOne({ symbol: 'ETH', network: 'ETH', tokenAddress: { $exists: false } })
+  if (eth) {
+    let u = interestUser
+    if (!u) {
+      u = await User.create({
+        fullName: 'Demo Interest',
+        email: 'demo.interest@lendbloc.local',
+        phoneNumber: '+15550002001',
+        passwordHash: await (await import('bcrypt')).default.hash('Demo@12345', 10),
+        kycReferenceId: 'KYC-INTEREST',
+        referralId: 'REF-INTEREST',
+        isKycVerified: true,
+        isEmailVerified: true,
+        isPhoneNumberVerified: true,
+        allowPasswordReset: true,
+        allowEmailChange: true,
+        accountType: AccountType.REG,
+      } as any)
+    }
+    let sa = await SavingsAccount.findOne({ userId: u!._id, assetId: eth._id, status: 'ACTIVE' })
+    if (!sa) {
+      const now = new Date()
+      sa = await SavingsAccount.create({ userId: u!._id, assetId: eth._id, balance: 1.0, apy: 4, termDays: 180, lockStartAt: now, lockEndAt: new Date(now.getTime() + 180*24*60*60*1000), lastPayoutAt: now, status: 'ACTIVE' } as any)
+    }
+    const baseD = new Date()
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(baseD.getFullYear(), baseD.getMonth() - i, 15)
+      const amount = 0.01 + (i % 3) * 0.005
+      await (await import('../src/models/SavingsEarning')).default.findOneAndUpdate(
+        { userId: u!._id, assetId: eth._id, savingsAccountId: sa._id, accruedAt: d },
+        { $setOnInsert: { amount, apy: 4, termDays: 30 } },
+        { upsert: true }
+      )
+    }
+  }
 }
 
 async function main() {

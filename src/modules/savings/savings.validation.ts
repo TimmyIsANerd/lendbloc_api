@@ -28,3 +28,8 @@ export const historyQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
+
+export const interestAnalyticsQuerySchema = z.object({
+  range: z.enum(['6m', '1y', 'all']).default('6m'),
+  assetId: z.string().regex(/^[0-9a-fA-F]{24}$/).optional(),
+});

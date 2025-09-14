@@ -9,6 +9,7 @@ import {
   getSavingsByAsset,
   listSavings,
   getSavingsHistory,
+  interestAnalytics,
 } from './savings.controller';
 import {
   createSavingsAccountSchema,
@@ -17,6 +18,7 @@ import {
   idParamSchema,
   assetParamSchema,
   historyQuerySchema,
+  interestAnalyticsQuerySchema,
 } from './savings.validation';
 
 const savings = new Hono();
@@ -37,5 +39,8 @@ savings.post('/:id/withdraw', zValidator('json', withdrawFromSavingsAccountSchem
 savings.get('/', listSavings);
 savings.get('/asset/:id', zValidator('param', assetParamSchema), getSavingsByAsset);
 savings.get('/asset/:id/history', zValidator('param', assetParamSchema), zValidator('query', historyQuerySchema), getSavingsHistory);
+
+// Analytics: interest earned per month in USD
+savings.get('/analytics/interest', zValidator('query', interestAnalyticsQuerySchema), interestAnalytics);
 
 export default savings;

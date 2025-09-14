@@ -7,6 +7,8 @@ import Wallet from '../../models/Wallet';
 import User, { AccountType } from '../../models/User';
 import { termKeyFromDays } from '../../helpers/assets/terms';
 import { getUsdPriceForAsset } from '../../helpers/tatum/rates';
+import { getUsdPrices } from '../../services/pricing';
+import { format, subMonths, eachMonthOfInterval } from 'date-fns';
 import {
   createSavingsAccountSchema,
   depositToSavingsAccountSchema,
@@ -14,6 +16,7 @@ import {
   idParamSchema,
   assetParamSchema,
   historyQuerySchema,
+  interestAnalyticsQuerySchema,
 } from './savings.validation';
 
 export const createSavingsAccount = async (c: Context) => {
@@ -224,4 +227,65 @@ export const getSavingsHistory = async (c: Context) => {
     console.error('Error fetching savings history:', error);
     return c.json({ error: 'Internal server error' }, 500);
   }
+};
+
+export const interestAnalytics = async (c: Context) => {
+  const userId = c.get('jwtPayload').userId;
+  const { range, assetId } = c.req.valid('query' as never) as z.infer<typeof interestAnalyticsQuerySchema>;
+
+  const now = new Date();
+  const start = range === 'all' ? undefined : (range === '1y' ? subMonths(now, 12) : subMonths(now, 6));
+
+  const match: any = { userId };
+  if (assetId) match.assetId = assetId;
+  if (start) match.accruedAt = { $gte: start };
+
+  const [earnings, assets] = await Promise.all([
+    SavingsEarning.find(match).select('assetId amount accruedAt').lean(),
+    Asset.find(assetId ? { _id: assetId } : { _id: { $in: await SavingsEarning.distinct('assetId', match) } })
+      .select('symbol network currentPrice')
+      .lean(),
+  ]);
+
+  const assetMap = new Map<string, any>(assets.map((a: any) => [String(a._id), a]));
+
+  // Group assets by network for pricing lookups
+  const byNetwork: Record<string, string[]> = {};
+  for (const a of assets) {
+    const net = String(a.network || '');
+    if (!byNetwork[net]) byNetwork[net] = [];
+    if (!byNetwork[net].includes(a.symbol)) byNetwork[net].push(a.symbol);
+  }
+
+  const priceBySymbolNet = new Map<string, number>();
+  for (const [net, syms] of Object.entries(byNetwork)) {
+    const symFallbacks: Record<string, number> = {};
+    for (const a of assets.filter((aa: any) => String(aa.network || '') === net)) symFallbacks[a.symbol] = Number(a.currentPrice || 0) || 0;
+    const map = await getUsdPrices(net, syms, symFallbacks);
+    for (const sym of syms) priceBySymbolNet.set(`${net}:${sym}`, Number(map.get(sym) || 0) || 0);
+  }
+
+  // Aggregate by YYYY-MM
+  const buckets = new Map<string, number>();
+  for (const e of earnings) {
+    const asset = assetMap.get(String(e.assetId));
+    if (!asset) continue;
+    const price = priceBySymbolNet.get(`${asset.network}:${asset.symbol}`) || Number(asset.currentPrice || 0) || 0;
+    const monthKey = format(new Date(e.accruedAt as any), 'yyyy-MM');
+    const usd = Number(e.amount || 0) * (price || 0);
+    buckets.set(monthKey, (buckets.get(monthKey) || 0) + usd);
+  }
+
+  if (start) {
+    for (const d of eachMonthOfInterval({ start, end: now })) {
+      const key = format(d, 'yyyy-MM');
+      if (!buckets.has(key)) buckets.set(key, 0);
+    }
+  }
+
+  const items = Array.from(buckets.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, amountInUsd]) => ({ month, amountInUsd: Number(amountInUsd.toFixed(8)) }));
+
+  return c.json({ range, items });
 };
