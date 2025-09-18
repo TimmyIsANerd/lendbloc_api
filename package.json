@@ -49,7 +49,8 @@
     "zod": "^4.0.17"
   },
   "scripts": {
-    "start": "bun run --watch index.ts",
+"start": "bun index.ts",
+    "dev": "bun --watch index.ts",
     "test": "bun test",
     "seed": "bun run seeds/seed.ts",
     "seed:drop": "bun run seeds/drop.ts",

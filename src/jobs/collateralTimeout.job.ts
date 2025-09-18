@@ -1,4 +1,5 @@
 import Loan, { LoanStatus } from '../models/Loan';
+import { isDbConnected } from '../config/db';
 
 const COLLATERAL_TIMEOUT_MINUTES = Number(process.env.COLLATERAL_TIMEOUT_MINUTES ?? 20);
 
@@ -6,6 +7,7 @@ const COLLATERAL_TIMEOUT_MINUTES = Number(process.env.COLLATERAL_TIMEOUT_MINUTES
 // In a production-grade setup, consider a job runner with persistence (BullMQ, Agenda) instead of in-memory intervals.
 export function startCollateralTimeoutWatcher() {
   setInterval(async () => {
+    if (!isDbConnected()) return;
     try {
       const now = new Date();
       const stale = await Loan.updateMany(

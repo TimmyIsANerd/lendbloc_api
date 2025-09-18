@@ -1,11 +1,13 @@
 import Loan, { LoanStatus } from '../models/Loan';
 import Asset from '../models/Asset';
 import Transaction from '../models/Transaction';
+import { isDbConnected } from '../config/db';
 
 // Monthly interest accrual: capitalize interest if unpaid, advance nextInterestAt.
 export function startMonthlyInterestAccrual() {
   const dayMs = 24 * 60 * 60 * 1000;
   setInterval(async () => {
+    if (!isDbConnected()) return;
     const now = new Date();
     try {
       const due = await Loan.find({ status: LoanStatus.ACTIVE, nextInterestAt: { $lte: now } });

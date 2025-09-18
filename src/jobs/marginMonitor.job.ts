@@ -2,6 +2,7 @@ import Loan, { LoanStatus } from '../models/Loan';
 import Asset from '../models/Asset';
 import Transaction from '../models/Transaction';
 import { getUsdPriceForAsset } from '../helpers/tatum/rates';
+import { isDbConnected } from '../config/db';
 
 const IS_DEV = process.env.CURRENT_ENVIRONMENT === 'DEVELOPMENT';
 const MC_LTV = Number(process.env.MARGIN_CALL_LTV ?? 0.7);
@@ -9,6 +10,7 @@ const LQ_LTV = Number(process.env.LIQUIDATION_LTV ?? 0.8);
 
 export function startMarginMonitor() {
   setInterval(async () => {
+    if (!isDbConnected()) return;
     try {
       const active = await Loan.find({ status: LoanStatus.ACTIVE });
       for (const loan of active) {

@@ -23,15 +23,16 @@ import connectDB from './src/config/db';
 import { ensureIndexes } from './src/config/indexes';
 import { createBunWebSocket } from 'hono/bun'
 
-connectDB();
+await connectDB();
 
 // Ensure DB indexes are up-to-date (prevents duplicate null txHash errors)
-void ensureIndexes();
+await ensureIndexes();
 
 // Start background jobs
 try { (await import('./src/jobs/collateralTimeout.job')).startCollateralTimeoutWatcher(); } catch (e) { console.error('Failed to start collateral timeout watcher', e); }
 try { (await import('./src/jobs/marginMonitor.job')).startMarginMonitor(); } catch (e) { console.error('Failed to start margin monitor', e); }
 try { (await import('./src/jobs/monthlyInterest.job')).startMonthlyInterestAccrual(); } catch (e) { console.error('Failed to start monthly interest accrual', e); }
+try { (await import('./src/jobs/revenueRollup.job')).startRevenueRollupJob(); } catch (e) { console.error('Failed to start revenue rollup job', e); }
 
 const app = new Hono();
 const { websocket } = createBunWebSocket()
