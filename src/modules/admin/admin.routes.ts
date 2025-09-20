@@ -22,9 +22,10 @@ import {
   getSystemSettings,
   adminUpdateSavingsApy,
 } from './admin.controller';
+import { profitSummary, profitSeries } from './admin.controller';
 import { adminAuthMiddleware } from '../../middleware/adminAuth';
 
-import { adminRegisterSchema, adminSendPhoneOTPSchema, adminVerifyPhoneOTPSchema, adminLoginSchema, adminVerifyLoginSchema, adminLogoutSchema, adminBlockUserSchema, adminUnblockUserSchema, adminListBlockedUsersSchema, adminListKycSchema, adminInviteSchema, adminUpdateSavingsApySchema } from './admin.validation';
+import { adminRegisterSchema, adminSendPhoneOTPSchema, adminVerifyPhoneOTPSchema, adminLoginSchema, adminVerifyLoginSchema, adminLogoutSchema, adminBlockUserSchema, adminUnblockUserSchema, adminListBlockedUsersSchema, adminListKycSchema, adminInviteSchema, adminUpdateSavingsApySchema, profitRangeSchema, profitSeriesQuerySchema } from './admin.validation';
 
 export const adminRouter = new Hono();
 
@@ -62,7 +63,7 @@ admin.get('/savings', getSavings);
 admin.get('/transactions', getTransactions);
 
 // Profit analytics
-admin.get('/analytics/profit/summary', zValidator('query', profitRangeSchema), async (c) => profitSummary(c));
-admin.get('/analytics/profit/series', zValidator('query', profitSeriesQuerySchema), async (c) => profitSeries(c));
+admin.get('/analytics/profit/summary', zValidator('query', profitRangeSchema), profitSummary);
+admin.get('/analytics/profit/series', zValidator('query', profitSeriesQuerySchema), profitSeries);
 
 export default admin;

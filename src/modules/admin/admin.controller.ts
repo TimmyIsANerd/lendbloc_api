@@ -15,7 +15,6 @@ import RefreshToken from '../../models/RefreshToken';
 import bcrypt from 'bcrypt';
 import { sign } from 'hono/jwt';
 import { generateOtp } from '../../helpers/otp';
-import { z } from 'zod';
 import {
   adminRegisterSchema,
   adminSendPhoneOTPSchema,
