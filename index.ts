@@ -22,6 +22,7 @@ import balances from './src/modules/balances/balances.routes';
 import connectDB from './src/config/db';
 import { ensureIndexes } from './src/config/indexes';
 import { createBunWebSocket } from 'hono/bun'
+import { serveStatic } from 'hono/bun'
 
 await connectDB();
 
@@ -55,6 +56,13 @@ app.use(cors({
 app.get("/", (c) => {
     return c.text("Lendbloc API is Live 🚀", 200)
 })
+
+// Serve static files
+app.use('/public/*', serveStatic({ root: './' }))
+
+// Admin interface routes
+app.get('/admin/admins', serveStatic({ path: './public/admin.html' }))
+app.get('/admin', (c) => c.redirect('/admin/admins'))
 
 // Swagger docs disabled during feature development
 
@@ -95,6 +103,8 @@ console.log(`
 ==========================================
 `);
 
+
+export { app };
 
 export default {
     port: process.env.PORT || 3000,

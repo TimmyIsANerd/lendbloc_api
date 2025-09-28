@@ -344,7 +344,8 @@ export const adminLogin = async (c: Context) => {
 
     // Development mode: bypass OTP and issue tokens immediately
     const secret = process.env.JWT_SECRET || 'your-secret-key';
-    const accessToken = await sign({ adminId: admin._id, role: admin.role, exp: Math.floor(Date.now() / 1000) + (60 * 15) }, secret);
+    const accessLifespan = TEST_ENV ? (60 * 60 * 24 * 3) : (60 * 15); // 3 days in DEVELOPMENT, 15 mins otherwise
+    const ac0xfAa632E98Ee5Be816109e5eF7E4E0AF7DfCB6cD8cessToken = await sign({ adminId: admin._id, role: admin.role, exp: Math.floor(Date.now() / 1000) + accessLifespan }, secret);
     const refreshToken = await sign({ adminId: admin._id, role: admin.role, exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7) }, secret);
 
     await AdminRefreshToken.create({

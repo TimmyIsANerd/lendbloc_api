@@ -1,63 +1,87 @@
-# Project Structure & Architecture
+---
+inclusion: always
+---
 
-## Modular Architecture
-The project follows a clean, modular architecture with clear separation of concerns:
+# Project Structure & Architecture Guidelines
 
-```
-src/
-├── config/          # Database and configuration setup
-├── models/          # Mongoose schemas and data models
-├── modules/         # Feature modules (routes, controllers, validation, tests)
-├── middleware/      # Authentication and request processing middleware
-├── helpers/         # Utility functions and external service integrations
-├── templates/       # Email templates
-├── utils/           # Business logic utilities
-└── docs/           # API documentation
-```
-
-## Module Structure Convention
-Each feature module follows a consistent 4-file pattern:
+## Mandatory Module Structure
+When creating new features, ALWAYS follow the 4-file pattern:
 
 ```
 src/modules/{feature}/
-├── {feature}.routes.ts      # Route definitions with middleware
-├── {feature}.controller.ts  # Business logic and request handling
-├── {feature}.validation.ts  # Zod schemas for request validation
-└── {feature}.test.ts       # Unit and integration tests
+├── {feature}.routes.ts      # Hono route definitions with middleware
+├── {feature}.controller.ts  # Business logic handlers (async functions)
+├── {feature}.validation.ts  # Zod schemas for input/output validation
+└── {feature}.test.ts       # Test cases using Bun test runner
 ```
 
-## Key Modules
-- **auth**: User authentication, OTP, KYC workflows
-- **users**: User profile management
-- **wallets**: Crypto wallet operations
-- **lending**: Loan creation and management
-- **savings**: Savings account functionality
-- **exchange**: Crypto swapping and voting
-- **admin**: Administrative functions
-- **notifications**: Email/SMS notification system
+## File Organization Rules
+- **Controllers**: Export named async functions, handle request/response logic
+- **Routes**: Import controller functions, apply middleware, define endpoints
+- **Validation**: Export Zod schemas with descriptive names (e.g., `CreateUserSchema`)
+- **Models**: Use Mongoose schemas, export as default with PascalCase names
 
-## Naming Conventions
-- **Files**: kebab-case (e.g., `auth.controller.ts`)
-- **Variables/Functions**: camelCase
-- **Types/Interfaces**: PascalCase with `I` prefix for interfaces
-- **Constants**: UPPER_SNAKE_CASE
-- **Database Models**: PascalCase, exported as default
+## Directory Structure
+```
+src/
+├── config/          # Database connection, environment setup
+├── models/          # Mongoose schemas (User.ts, Loan.ts, etc.)
+├── modules/         # Feature modules following 4-file pattern
+├── middleware/      # Auth, validation, error handling middleware
+├── helpers/         # External service integrations (Tatum, Twilio, etc.)
+├── templates/       # Email/SMS templates
+├── utils/           # Pure business logic functions
+└── docs/           # Swagger/OpenAPI documentation
+```
 
-## Route Structure
-- Base path: `/api/v1/{module}`
-- RESTful conventions where applicable
-- Consistent error response format with error codes
-- Rate limiting on sensitive endpoints (OTP, password reset)
+## Naming Conventions (Strictly Enforced)
+- **Files**: kebab-case (`user-profile.controller.ts`)
+- **Functions/Variables**: camelCase (`getUserBalance`)
+- **Types/Interfaces**: PascalCase with `I` prefix (`IUserData`)
+- **Constants**: UPPER_SNAKE_CASE (`MAX_LOAN_AMOUNT`)
+- **Database Models**: PascalCase (`User`, `LoanQuote`)
+- **API Routes**: `/api/v1/{module}/{action}`
 
-## Error Handling
-- Standardized error responses with `error` and `code` fields
-- HTTP status codes follow REST conventions
-- Validation errors return 400 with descriptive messages
-- Authentication errors use specific error codes (UNAUTHORIZED, MISSING_TOKEN, etc.)
+## Code Patterns to Follow
 
-## Security Patterns
-- JWT tokens with 15-minute expiry
-- Refresh tokens with 3-day expiry and rotation
-- Rate limiting on authentication endpoints
-- Input validation using Zod schemas
-- Sensitive data encryption before database storage
+### Controller Pattern
+```typescript
+export const createUser = async (c: Context) => {
+  const body = await c.req.json()
+  const validated = CreateUserSchema.parse(body)
+  // Business logic here
+  return c.json({ success: true, data: result })
+}
+```
+
+### Error Response Pattern
+```typescript
+return c.json({ 
+  error: "Descriptive error message", 
+  code: "ERROR_CODE" 
+}, 400)
+```
+
+### Route Definition Pattern
+```typescript
+app.post('/create', authMiddleware, async (c) => createUser(c))
+```
+
+## Security Implementation Rules
+- ALWAYS validate input with Zod schemas before processing
+- Use JWT middleware for protected routes
+- Apply rate limiting to auth endpoints (OTP, login, password reset)
+- Encrypt sensitive data before database storage
+- Return consistent error codes: `UNAUTHORIZED`, `MISSING_TOKEN`, `INVALID_INPUT`
+
+## Database Interaction Guidelines
+- Use Mongoose models for all database operations
+- Implement proper error handling for database failures
+- Use transactions for multi-document operations
+- Follow the existing schema patterns in `src/models/`
+
+## Testing Requirements
+- Write tests for all controller functions
+- Mock external service calls (Tatum, Twilio, etc.)
+- Test both success and error scenarios
+- Use descriptive test names that explain the scen
