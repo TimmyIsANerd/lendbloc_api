@@ -18,6 +18,7 @@ import Transaction from '../src/models/Transaction'
 import Notification from '../src/models/Notification'
 import Referral from '../src/models/Referral'
 import Otp from '../src/models/Otp'
+import UserBalance from '../src/models/UserBalance'
 
 // Import helpers
 import { createEvmWalletWithViem } from '../src/helpers/wallet/evm'
@@ -90,17 +91,6 @@ function generateTestAssets(): TestAsset[] {
   const assets: TestAsset[] = [
     // Native networks
     {
-      name: 'Ethereum', symbol: 'ETH', iconUrl: 'https://cryptologos.cc/logos/ethereum-eth-logo.png',
-      currentPrice: 3500, marketCap: 420_000_000_000, circulatingSupply: 120_000_000, amountHeld: 10000,
-      isLendable: true, isCollateral: true, network: 'ETH', kind: 'native', status: 'LISTED',
-      fees: {
-        loanInterest: { REG: { d7: 4, d30: 6, d180: 8, d365: 10 }, PRO: { d7: 3, d30: 5, d180: 7, d365: 9 } },
-        savingsInterest: { REG: { d7: 2, d30: 4, d180: 5, d365: 6 }, PRO: { d7: 2, d30: 4, d180: 5, d365: 6 } },
-        sendFeePercent: { REG: 0.1, PRO: 0.08 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 },
-        exchangeFeePercentFrom: { REG: 0.2, PRO: 0.15 }, exchangeFeePercentTo: { REG: 0.2, PRO: 0.15 }, referralFeePercent: { REG: 1, PRO: 1 },
-      }
-    },
-    {
       name: 'Bitcoin', symbol: 'BTC', iconUrl: 'https://cryptologos.cc/logos/bitcoin-btc-logo.png',
       currentPrice: 65000, marketCap: 1_300_000_000_000, circulatingSupply: 19_800_000, amountHeld: 1000,
       isLendable: true, isCollateral: true, network: 'BTC', kind: 'native', status: 'LISTED',
@@ -112,12 +102,23 @@ function generateTestAssets(): TestAsset[] {
       }
     },
     {
-      name: 'Litecoin', symbol: 'LTC', iconUrl: 'https://cryptologos.cc/logos/litecoin-ltc-logo.png',
-      currentPrice: 75, marketCap: 5_500_000_000, circulatingSupply: 73_000_000, amountHeld: 10000,
-      isLendable: true, isCollateral: true, network: 'LTC', kind: 'native', status: 'LISTED',
+      name: 'Ethereum', symbol: 'ETH', iconUrl: 'https://cryptologos.cc/logos/ethereum-eth-logo.png',
+      currentPrice: 3500, marketCap: 420_000_000_000, circulatingSupply: 120_000_000, amountHeld: 10000,
+      isLendable: true, isCollateral: true, network: 'ETH', kind: 'native', status: 'LISTED',
       fees: {
-        loanInterest: { REG: { d7: 6, d30: 8, d180: 10, d365: 12 }, PRO: { d7: 5, d30: 7, d180: 9, d365: 11 } },
-        savingsInterest: { REG: { d7: 1.25, d30: 2.5, d180: 3.5, d365: 4.5 }, PRO: { d7: 1.25, d30: 2.5, d180: 3.5, d365: 4.5 } },
+        loanInterest: { REG: { d7: 4, d30: 6, d180: 8, d365: 10 }, PRO: { d7: 3, d30: 5, d180: 7, d365: 9 } },
+        savingsInterest: { REG: { d7: 2, d30: 4, d180: 5, d365: 6 }, PRO: { d7: 2, d30: 4, d180: 5, d365: 6 } },
+        sendFeePercent: { REG: 0.1, PRO: 0.08 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 },
+        exchangeFeePercentFrom: { REG: 0.2, PRO: 0.15 }, exchangeFeePercentTo: { REG: 0.2, PRO: 0.15 }, referralFeePercent: { REG: 1, PRO: 1 },
+      }
+    },
+    {
+      name: 'BNB', symbol: 'BNB', iconUrl: 'https://cryptologos.cc/logos/bnb-bnb-logo.png',
+      currentPrice: 550, marketCap: 80_000_000_000, circulatingSupply: 150_000_000, amountHeld: 500000,
+      isLendable: true, isCollateral: true, network: 'BSC', kind: 'native', status: 'LISTED',
+      fees: {
+        loanInterest: { REG: { d7: 5, d30: 7, d180: 9, d365: 11 }, PRO: { d7: 4, d30: 6, d180: 8, d365: 10 } },
+        savingsInterest: { REG: { d7: 2, d30: 3.5, d180: 4.5, d365: 5.5 }, PRO: { d7: 2, d30: 3.5, d180: 4.5, d365: 5.5 } },
         sendFeePercent: { REG: 0.1, PRO: 0.08 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 },
         exchangeFeePercentFrom: { REG: 0.2, PRO: 0.15 }, exchangeFeePercentTo: { REG: 0.2, PRO: 0.15 }, referralFeePercent: { REG: 1, PRO: 1 },
       }
@@ -133,31 +134,35 @@ function generateTestAssets(): TestAsset[] {
         exchangeFeePercentFrom: { REG: 0.2, PRO: 0.15 }, exchangeFeePercentTo: { REG: 0.2, PRO: 0.15 }, referralFeePercent: { REG: 1, PRO: 1 },
       }
     },
-    // Tokens: USDT on ETH & TRON
     {
-      name: 'Tether USD', symbol: 'USDT', iconUrl: 'https://cryptologos.cc/logos/tether-usdt-logo.png',
-      currentPrice: 1, marketCap: 110_000_000_000, circulatingSupply: 110_000_000_000, amountHeld: 10000000,
-      isLendable: true, isCollateral: true, network: 'ETH', kind: 'erc20', status: 'LISTED',
-      tokenAddress: '0xdAC17F958D2ee523a2206206994597C13D831ec7', decimals: 6,
+      name: 'Litecoin', symbol: 'LTC', iconUrl: 'https://cryptologos.cc/logos/litecoin-ltc-logo.png',
+      currentPrice: 75, marketCap: 5_500_000_000, circulatingSupply: 73_000_000, amountHeld: 10000,
+      isLendable: true, isCollateral: true, network: 'LTC', kind: 'native', status: 'LISTED',
       fees: {
-        loanInterest: { REG: { d7: 3, d30: 4, d180: 5, d365: 6 }, PRO: { d7: 2.5, d30: 3.5, d180: 4.5, d365: 5.5 } },
-        savingsInterest: { REG: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 }, PRO: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 } },
-        sendFeePercent: { REG: 0.05, PRO: 0.04 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 },
-        exchangeFeePercentFrom: { REG: 0.1, PRO: 0.08 }, exchangeFeePercentTo: { REG: 0.1, PRO: 0.08 }, referralFeePercent: { REG: 0.5, PRO: 0.5 },
+        loanInterest: { REG: { d7: 6, d30: 8, d180: 10, d365: 12 }, PRO: { d7: 5, d30: 7, d180: 9, d365: 11 } },
+        savingsInterest: { REG: { d7: 1.25, d30: 2.5, d180: 3.5, d365: 4.5 }, PRO: { d7: 1.25, d30: 2.5, d180: 3.5, d365: 4.5 } },
+        sendFeePercent: { REG: 0.1, PRO: 0.08 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 },
+        exchangeFeePercentFrom: { REG: 0.2, PRO: 0.15 }, exchangeFeePercentTo: { REG: 0.2, PRO: 0.15 }, referralFeePercent: { REG: 1, PRO: 1 },
       }
     },
-    {
-      name: 'Tether USD', symbol: 'USDT', iconUrl: 'https://cryptologos.cc/logos/tether-usdt-logo.png',
-      currentPrice: 1, marketCap: 110_000_000_000, circulatingSupply: 110_000_000_000, amountHeld: 10000000,
-      isLendable: true, isCollateral: true, network: 'TRON', kind: 'trc20', status: 'LISTED',
-      tokenAddress: 'TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj', decimals: 6,
-      fees: {
-        loanInterest: { REG: { d7: 3, d30: 4, d180: 5, d365: 6 }, PRO: { d7: 2.5, d30: 3.5, d180: 4.5, d365: 5.5 } },
-        savingsInterest: { REG: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 }, PRO: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 } },
-        sendFeePercent: { REG: 0.05, PRO: 0.04 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 },
-        exchangeFeePercentFrom: { REG: 0.1, PRO: 0.08 }, exchangeFeePercentTo: { REG: 0.1, PRO: 0.08 }, referralFeePercent: { REG: 0.5, PRO: 0.5 },
-      }
-    },
+    // ETH tokens
+    { name: 'Tether USD', symbol: 'USDT', iconUrl: 'https://cryptologos.cc/logos/tether-usdt-logo.png', currentPrice: 1, marketCap: 110_000_000_000, circulatingSupply: 110_000_000_000, amountHeld: 10000000, isLendable: true, isCollateral: true, network: 'ETH', kind: 'erc20', tokenAddress: '0xdAC17F958D2ee523a2206206994597C13D831ec7', decimals: 6, status: 'LISTED', fees: { loanInterest: { REG: { d7: 3, d30: 4, d180: 5, d365: 6 }, PRO: { d7: 2.5, d30: 3.5, d180: 4.5, d365: 5.5 } }, savingsInterest: { REG: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 }, PRO: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 } }, sendFeePercent: { REG: 0.05, PRO: 0.04 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 }, exchangeFeePercentFrom: { REG: 0.1, PRO: 0.08 }, exchangeFeePercentTo: { REG: 0.1, PRO: 0.08 }, referralFeePercent: { REG: 0.5, PRO: 0.5 } } },
+    { name: 'USD Coin', symbol: 'USDC', iconUrl: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png', currentPrice: 1, marketCap: 32_000_000_000, circulatingSupply: 32_000_000_000, amountHeld: 10000000, isLendable: true, isCollateral: true, network: 'ETH', kind: 'erc20', tokenAddress: '0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', decimals: 6, status: 'LISTED', fees: { loanInterest: { REG: { d7: 3, d30: 4, d180: 5, d365: 6 }, PRO: { d7: 2.5, d30: 3.5, d180: 4.5, d365: 5.5 } }, savingsInterest: { REG: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 }, PRO: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 } }, sendFeePercent: { REG: 0.05, PRO: 0.04 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 }, exchangeFeePercentFrom: { REG: 0.1, PRO: 0.08 }, exchangeFeePercentTo: { REG: 0.1, PRO: 0.08 }, referralFeePercent: { REG: 0.5, PRO: 0.5 } } },
+    { name: 'Dai', symbol: 'DAI', iconUrl: 'https://cryptologos.cc/logos/multi-collateral-dai-dai-logo.png', currentPrice: 1, marketCap: 5_000_000_000, circulatingSupply: 5_000_000_000, amountHeld: 10000000, isLendable: true, isCollateral: true, network: 'ETH', kind: 'erc20', tokenAddress: '0x6B175474E89094C44Da98b954EedeAC495271d0F', decimals: 18, status: 'LISTED', fees: { loanInterest: { REG: { d7: 3, d30: 4, d180: 5, d365: 6 }, PRO: { d7: 2.5, d30: 3.5, d180: 4.5, d365: 5.5 } }, savingsInterest: { REG: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 }, PRO: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 } }, sendFeePercent: { REG: 0.05, PRO: 0.04 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 }, exchangeFeePercentFrom: { REG: 0.1, PRO: 0.08 }, exchangeFeePercentTo: { REG: 0.1, PRO: 0.08 }, referralFeePercent: { REG: 0.5, PRO: 0.5 } } },
+    { name: 'Wrapped Bitcoin', symbol: 'WBTC', iconUrl: 'https://cryptologos.cc/logos/wrapped-bitcoin-wbtc-logo.png', currentPrice: 65000, marketCap: 8_000_000_000, circulatingSupply: 120_000, amountHeld: 1000, isLendable: true, isCollateral: true, network: 'ETH', kind: 'erc20', tokenAddress: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599', decimals: 8, status: 'LISTED', fees: { loanInterest: { REG: { d7: 5, d30: 7, d180: 9, d365: 11 }, PRO: { d7: 4, d30: 6, d180: 8, d365: 10 } }, savingsInterest: { REG: { d7: 1, d30: 2, d180: 3, d365: 4 }, PRO: { d7: 1, d30: 2, d180: 3, d365: 4 } }, sendFeePercent: { REG: 0.05, PRO: 0.04 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 }, exchangeFeePercentFrom: { REG: 0.2, PRO: 0.15 }, exchangeFeePercentTo: { REG: 0.2, PRO: 0.15 }, referralFeePercent: { REG: 0.5, PRO: 0.5 } } },
+    { name: 'Chainlink', symbol: 'LINK', iconUrl: 'https://cryptologos.cc/logos/chainlink-link-logo.png', currentPrice: 12, marketCap: 7_000_000_000, circulatingSupply: 1_000_000_000, amountHeld: 5000000, isLendable: true, isCollateral: true, network: 'ETH', kind: 'erc20', tokenAddress: '0x514910771AF9Ca656af840dff83E8264EcF986CA', decimals: 18, status: 'LISTED', fees: { loanInterest: { REG: { d7: 5, d30: 7, d180: 9, d365: 11 }, PRO: { d7: 4, d30: 6, d180: 8, d365: 10 } }, savingsInterest: { REG: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 }, PRO: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 } }, sendFeePercent: { REG: 0.05, PRO: 0.04 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 }, exchangeFeePercentFrom: { REG: 0.1, PRO: 0.08 }, exchangeFeePercentTo: { REG: 0.1, PRO: 0.08 }, referralFeePercent: { REG: 0.5, PRO: 0.5 } } },
+    { name: 'Uniswap', symbol: 'UNI', iconUrl: 'https://cryptologos.cc/logos/uniswap-uni-logo.png', currentPrice: 5, marketCap: 3_000_000_000, circulatingSupply: 1_000_000_000, amountHeld: 5000000, isLendable: true, isCollateral: true, network: 'ETH', kind: 'erc20', tokenAddress: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', decimals: 18, status: 'LISTED', fees: { loanInterest: { REG: { d7: 5, d30: 7, d180: 9, d365: 11 }, PRO: { d7: 4, d30: 6, d180: 8, d365: 10 } }, savingsInterest: { REG: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 }, PRO: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 } }, sendFeePercent: { REG: 0.05, PRO: 0.04 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 }, exchangeFeePercentFrom: { REG: 0.1, PRO: 0.08 }, exchangeFeePercentTo: { REG: 0.1, PRO: 0.08 }, referralFeePercent: { REG: 0.5, PRO: 0.5 } } },
+    { name: 'Shiba Inu', symbol: 'SHIB', iconUrl: 'https://cryptologos.cc/logos/shiba-inu-shib-logo.png', currentPrice: 0.00002, marketCap: 11_000_000_000, circulatingSupply: 589_000_000_000_000, amountHeld: 10_000_000_000_000, isLendable: true, isCollateral: true, network: 'ETH', kind: 'erc20', tokenAddress: '0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE', decimals: 18, status: 'LISTED', fees: { loanInterest: { REG: { d7: 5, d30: 7, d180: 9, d365: 11 }, PRO: { d7: 4, d30: 6, d180: 8, d365: 10 } }, savingsInterest: { REG: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 }, PRO: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 } }, sendFeePercent: { REG: 0.1, PRO: 0.08 }, receiveFeePercent: { REG: 0.1, PRO: 0.08 }, exchangeFeePercentFrom: { REG: 0.15, PRO: 0.12 }, exchangeFeePercentTo: { REG: 0.15, PRO: 0.12 }, referralFeePercent: { REG: 0.5, PRO: 0.5 } } },
+    { name: 'Aave', symbol: 'AAVE', iconUrl: 'https://cryptologos.cc/logos/aave-aave-logo.png', currentPrice: 100, marketCap: 1_500_000_000, circulatingSupply: 14_000_000, amountHeld: 1_000_000, isLendable: true, isCollateral: true, network: 'ETH', kind: 'erc20', tokenAddress: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9', decimals: 18, status: 'LISTED', fees: { loanInterest: { REG: { d7: 6, d30: 8, d180: 10, d365: 12 }, PRO: { d7: 5, d30: 7, d180: 9, d365: 11 } }, savingsInterest: { REG: { d7: 2, d30: 3, d180: 4, d365: 5 }, PRO: { d7: 2, d30: 3, d180: 4, d365: 5 } }, sendFeePercent: { REG: 0.1, PRO: 0.08 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 }, exchangeFeePercentFrom: { REG: 0.15, PRO: 0.12 }, exchangeFeePercentTo: { REG: 0.15, PRO: 0.12 }, referralFeePercent: { REG: 0.5, PRO: 0.5 } } },
+    { name: 'Maker', symbol: 'MKR', iconUrl: 'https://cryptologos.cc/logos/maker-mkr-logo.png', currentPrice: 2500, marketCap: 2_200_000_000, circulatingSupply: 900_000, amountHeld: 100_000, isLendable: true, isCollateral: true, network: 'ETH', kind: 'erc20', tokenAddress: '0x9f8F72aA9304c8B593d555F12ef6589cC3A579A2', decimals: 18, status: 'LISTED', fees: { loanInterest: { REG: { d7: 6, d30: 8, d180: 10, d365: 12 }, PRO: { d7: 5, d30: 7, d180: 9, d365: 11 } }, savingsInterest: { REG: { d7: 2, d30: 3, d180: 4, d365: 5 }, PRO: { d7: 2, d30: 3, d180: 4, d365: 5 } }, sendFeePercent: { REG: 0.1, PRO: 0.08 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 }, exchangeFeePercentFrom: { REG: 0.2, PRO: 0.15 }, exchangeFeePercentTo: { REG: 0.2, PRO: 0.15 }, referralFeePercent: { REG: 0.5, PRO: 0.5 } } },
+    // BSC tokens
+    { name: 'Tether USD', symbol: 'USDT', iconUrl: 'https://cryptologos.cc/logos/tether-usdt-logo.png', currentPrice: 1, marketCap: 10_000_000_000, circulatingSupply: 10_000_000_000, amountHeld: 5000000, isLendable: true, isCollateral: true, network: 'BSC', kind: 'erc20', tokenAddress: '0x55d398326f99059fF775485246999027B3197955', decimals: 18, status: 'LISTED', fees: { loanInterest: { REG: { d7: 3, d30: 4, d180: 5, d365: 6 }, PRO: { d7: 2.5, d30: 3.5, d180: 4.5, d365: 5.5 } }, savingsInterest: { REG: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 }, PRO: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 } }, sendFeePercent: { REG: 0.05, PRO: 0.04 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 }, exchangeFeePercentFrom: { REG: 0.1, PRO: 0.08 }, exchangeFeePercentTo: { REG: 0.1, PRO: 0.08 }, referralFeePercent: { REG: 0.5, PRO: 0.5 } } },
+    { name: 'USD Coin', symbol: 'USDC', iconUrl: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png', currentPrice: 1, marketCap: 8_000_000_000, circulatingSupply: 8_000_000_000, amountHeld: 5000000, isLendable: true, isCollateral: true, network: 'BSC', kind: 'erc20', tokenAddress: '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', decimals: 18, status: 'LISTED', fees: { loanInterest: { REG: { d7: 3, d30: 4, d180: 5, d365: 6 }, PRO: { d7: 2.5, d30: 3.5, d180: 4.5, d365: 5.5 } }, savingsInterest: { REG: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 }, PRO: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 } }, sendFeePercent: { REG: 0.05, PRO: 0.04 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 }, exchangeFeePercentFrom: { REG: 0.1, PRO: 0.08 }, exchangeFeePercentTo: { REG: 0.1, PRO: 0.08 }, referralFeePercent: { REG: 0.5, PRO: 0.5 } } },
+    { name: 'BUSD', symbol: 'BUSD', iconUrl: 'https://cryptologos.cc/logos/binance-usd-busd-logo.png', currentPrice: 1, marketCap: 500_000_000, circulatingSupply: 500_000_000, amountHeld: 1000000, isLendable: true, isCollateral: true, network: 'BSC', kind: 'erc20', tokenAddress: '0xe9e7cea3dedca5984780bafc599bd69add087d56', decimals: 18, status: 'LISTED', fees: { loanInterest: { REG: { d7: 3, d30: 4, d180: 5, d365: 6 }, PRO: { d7: 2.5, d30: 3.5, d180: 4.5, d365: 5.5 } }, savingsInterest: { REG: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 }, PRO: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 } }, sendFeePercent: { REG: 0.05, PRO: 0.04 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 }, exchangeFeePercentFrom: { REG: 0.1, PRO: 0.08 }, exchangeFeePercentTo: { REG: 0.1, PRO: 0.08 }, referralFeePercent: { REG: 0.5, PRO: 0.5 } } },
+    { name: 'PancakeSwap', symbol: 'CAKE', iconUrl: 'https://cryptologos.cc/logos/pancakeswap-cake-logo.png', currentPrice: 3, marketCap: 800_000_000, circulatingSupply: 300_000_000, amountHeld: 1000000, isLendable: true, isCollateral: true, network: 'BSC', kind: 'erc20', tokenAddress: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82', decimals: 18, status: 'LISTED', fees: { loanInterest: { REG: { d7: 5, d30: 7, d180: 9, d365: 11 }, PRO: { d7: 4, d30: 6, d180: 8, d365: 10 } }, savingsInterest: { REG: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 }, PRO: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 } }, sendFeePercent: { REG: 0.1, PRO: 0.08 }, receiveFeePercent: { REG: 0.1, PRO: 0.08 }, exchangeFeePercentFrom: { REG: 0.15, PRO: 0.12 }, exchangeFeePercentTo: { REG: 0.15, PRO: 0.12 }, referralFeePercent: { REG: 0.5, PRO: 0.5 } } },
+    // TRON tokens
+    { name: 'USD Coin', symbol: 'USDC', iconUrl: 'https://cryptologos.cc/logos/usd-coin-usdc-logo.png', currentPrice: 1, marketCap: 5_000_000_000, circulatingSupply: 5_000_000_000, amountHeld: 1000000, isLendable: true, isCollateral: true, network: 'TRON', kind: 'trc20', tokenAddress: 'TRON_USDC_FAKE', decimals: 6, status: 'LISTED', fees: { loanInterest: { REG: { d7: 3, d30: 4, d180: 5, d365: 6 }, PRO: { d7: 2.5, d30: 3.5, d180: 4.5, d365: 5.5 } }, savingsInterest: { REG: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 }, PRO: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 } }, sendFeePercent: { REG: 0.05, PRO: 0.04 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 }, exchangeFeePercentFrom: { REG: 0.1, PRO: 0.08 }, exchangeFeePercentTo: { REG: 0.1, PRO: 0.08 }, referralFeePercent: { REG: 0.5, PRO: 0.5 } } },
+    { name: 'USDD', symbol: 'USDD', iconUrl: 'https://cryptologos.cc/logos/usdd-usdd-logo.png', currentPrice: 1, marketCap: 750_000_000, circulatingSupply: 750_000_000, amountHeld: 1000000, isLendable: true, isCollateral: true, network: 'TRON', kind: 'trc20', tokenAddress: 'TRON_USDD_FAKE', decimals: 6, status: 'LISTED', fees: { loanInterest: { REG: { d7: 3, d30: 4, d180: 5, d365: 6 }, PRO: { d7: 2.5, d30: 3.5, d180: 4.5, d365: 5.5 } }, savingsInterest: { REG: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 }, PRO: { d7: 1.5, d30: 2.5, d180: 3.5, d365: 4.5 } }, sendFeePercent: { REG: 0.05, PRO: 0.04 }, receiveFeePercent: { REG: 0.05, PRO: 0.04 }, exchangeFeePercentFrom: { REG: 0.1, PRO: 0.08 }, exchangeFeePercentTo: { REG: 0.1, PRO: 0.08 }, referralFeePercent: { REG: 0.5, PRO: 0.5 } } },
   ]
   return assets
 }
@@ -363,6 +368,23 @@ async function seedUsers(assetsByKey: Record<string, any>, encryptMnemonic: (t: 
   }
 
   return users
+}
+
+async function seedTopBalancesForUser(userId: string, topN = 20) {
+  // Pick top N LISTED assets by marketCap and credit user with ~$1000 worth of each
+  const assets = await Asset.find({ status: 'LISTED' })
+    .select('_id symbol currentPrice marketCap')
+    .sort({ marketCap: -1 })
+    .limit(topN)
+    .lean();
+
+  const ops: any[] = []
+  for (const a of assets as any[]) {
+    const price = Number(a.currentPrice || 1) || 1
+    const amount = Number((1000 / price).toFixed(8)) // ~$1000 worth
+    ops.push({ updateOne: { filter: { userId: new mongoose.Types.ObjectId(userId), assetId: a._id }, update: { $set: { balance: amount } }, upsert: true } })
+  }
+  if (ops.length) await UserBalance.bulkWrite(ops, { ordered: false })
 }
 
 async function createUserWallets(userId: string, assetsByKey: Record<string, any>, encryptMnemonic: (t: string) => string) {
@@ -689,6 +711,12 @@ async function main() {
 
     // Seed users
     const users = await seedUsers(assetsByKey, encryptMnemonic)
+
+    // Credit top 20 asset balances to John for demos
+    const john = users.find((u: any) => String(u.email || '').toLowerCase() === 'john.doe@lendbloc.local')
+    if (john) {
+      await seedTopBalancesForUser(String(john._id), 20)
+    }
 
     // Link referrals among users based on actual user ids
     await linkReferrals(users)
