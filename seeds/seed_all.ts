@@ -91,7 +91,7 @@ function generateTestAssets(): TestAsset[] {
     // Native networks
     {
       name: 'Ethereum', symbol: 'ETH', iconUrl: 'https://cryptologos.cc/logos/ethereum-eth-logo.png',
-      currentPrice: 3500, marketCap: 420_000_000_000, circulatingSupply: 120_000_000, amountHeld: 0,
+      currentPrice: 3500, marketCap: 420_000_000_000, circulatingSupply: 120_000_000, amountHeld: 10000,
       isLendable: true, isCollateral: true, network: 'ETH', kind: 'native', status: 'LISTED',
       fees: {
         loanInterest: { REG: { d7: 4, d30: 6, d180: 8, d365: 10 }, PRO: { d7: 3, d30: 5, d180: 7, d365: 9 } },
@@ -102,7 +102,7 @@ function generateTestAssets(): TestAsset[] {
     },
     {
       name: 'Bitcoin', symbol: 'BTC', iconUrl: 'https://cryptologos.cc/logos/bitcoin-btc-logo.png',
-      currentPrice: 65000, marketCap: 1_300_000_000_000, circulatingSupply: 19_800_000, amountHeld: 0,
+      currentPrice: 65000, marketCap: 1_300_000_000_000, circulatingSupply: 19_800_000, amountHeld: 1000,
       isLendable: true, isCollateral: true, network: 'BTC', kind: 'native', status: 'LISTED',
       fees: {
         loanInterest: { REG: { d7: 5, d30: 7, d180: 9, d365: 11 }, PRO: { d7: 4, d30: 6, d180: 8, d365: 10 } },
@@ -113,7 +113,7 @@ function generateTestAssets(): TestAsset[] {
     },
     {
       name: 'Litecoin', symbol: 'LTC', iconUrl: 'https://cryptologos.cc/logos/litecoin-ltc-logo.png',
-      currentPrice: 75, marketCap: 5_500_000_000, circulatingSupply: 73_000_000, amountHeld: 0,
+      currentPrice: 75, marketCap: 5_500_000_000, circulatingSupply: 73_000_000, amountHeld: 10000,
       isLendable: true, isCollateral: true, network: 'LTC', kind: 'native', status: 'LISTED',
       fees: {
         loanInterest: { REG: { d7: 6, d30: 8, d180: 10, d365: 12 }, PRO: { d7: 5, d30: 7, d180: 9, d365: 11 } },
@@ -124,7 +124,7 @@ function generateTestAssets(): TestAsset[] {
     },
     {
       name: 'Tron', symbol: 'TRX', iconUrl: 'https://cryptologos.cc/logos/tron-trx-logo.png',
-      currentPrice: 0.125, marketCap: 10_800_000_000, circulatingSupply: 87_000_000_000, amountHeld: 0,
+      currentPrice: 0.125, marketCap: 10_800_000_000, circulatingSupply: 87_000_000_000, amountHeld: 1000000,
       isLendable: true, isCollateral: true, network: 'TRON', kind: 'native', status: 'LISTED',
       fees: {
         loanInterest: { REG: { d7: 4.5, d30: 6.5, d180: 8.5, d365: 10.5 }, PRO: { d7: 3.5, d30: 5.5, d180: 7.5, d365: 9.5 } },
@@ -136,7 +136,7 @@ function generateTestAssets(): TestAsset[] {
     // Tokens: USDT on ETH & TRON
     {
       name: 'Tether USD', symbol: 'USDT', iconUrl: 'https://cryptologos.cc/logos/tether-usdt-logo.png',
-      currentPrice: 1, marketCap: 110_000_000_000, circulatingSupply: 110_000_000_000, amountHeld: 0,
+      currentPrice: 1, marketCap: 110_000_000_000, circulatingSupply: 110_000_000_000, amountHeld: 10000000,
       isLendable: true, isCollateral: true, network: 'ETH', kind: 'erc20', status: 'LISTED',
       tokenAddress: '0xdAC17F958D2ee523a2206206994597C13D831ec7', decimals: 6,
       fees: {
@@ -148,7 +148,7 @@ function generateTestAssets(): TestAsset[] {
     },
     {
       name: 'Tether USD', symbol: 'USDT', iconUrl: 'https://cryptologos.cc/logos/tether-usdt-logo.png',
-      currentPrice: 1, marketCap: 110_000_000_000, circulatingSupply: 110_000_000_000, amountHeld: 0,
+      currentPrice: 1, marketCap: 110_000_000_000, circulatingSupply: 110_000_000_000, amountHeld: 10000000,
       isLendable: true, isCollateral: true, network: 'TRON', kind: 'trc20', status: 'LISTED',
       tokenAddress: 'TXLAQ63Xg1NAzckPwKHvzw7CSEmLMEqcdj', decimals: 6,
       fees: {
@@ -264,6 +264,7 @@ async function seedAssets(): Promise<Record<string, any>> {
           currentPrice: a.currentPrice,
           marketCap: a.marketCap,
           circulatingSupply: a.circulatingSupply,
+          amountHeld: a.amountHeld,
           isLendable: a.isLendable,
           isCollateral: a.isCollateral,
           status: a.status,
@@ -415,11 +416,10 @@ async function createUserWallets(userId: string, assetsByKey: Record<string, any
       }
 
       const encryptedMnemonic = encryptMnemonic(mnemonic)
-      const balanceTokens = randomAmount(0.1, 5)
 
       const w = await Wallet.findOneAndUpdate(
         { userId: new mongoose.Types.ObjectId(userId), assetId: asset._id, isLiquidityWallet: false },
-        { $setOnInsert: { address: walletAddress, encryptedMnemonic, balance: balanceTokens, network: asset.network } },
+        { $setOnInsert: { address: walletAddress, encryptedMnemonic, network: asset.network } },
         { upsert: true, new: true }
       )
       created.push(w)
@@ -674,9 +674,11 @@ async function main() {
     // Connect to database
     await connectDB()
 
-    // Clear existing data if needed
-    if (process.env.CLEAR_BEFORE_SEED === 'true') {
-      await clearExistingData()
+    // Drop entire database first (per request)
+    if (mongoose.connection?.db) {
+      const name = await mongoose.connection.db.databaseName
+      console.warn(`[seed] Dropping database: ${name}`)
+      await mongoose.connection.db.dropDatabase()
     }
 
     // Get encryption key
