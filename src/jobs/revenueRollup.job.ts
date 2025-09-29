@@ -8,10 +8,15 @@ async function rollupDate(d: Date) {
   const to = endOfDay(d);
   const dateStr = format(from, 'yyyy-MM-dd');
 
-  const events = await RevenueEvent.find({ createdAt: { $gte: from, $lte: to } }).select('type amountUsd').lean();
+  // Use aggregation to avoid loading all events into memory
+  const agg = await RevenueEvent.aggregate([
+    { $match: { createdAt: { $gte: from, $lte: to } } },
+    { $group: { _id: '$type', total: { $sum: '$amountUsd' } } },
+  ]).allowDiskUse(true);
+
   const byType: Record<string, number> = {};
-  for (const e of events) {
-    byType[e.type] = (byType[e.type] || 0) + (Number(e.amountUsd) || 0);
+  for (const row of agg as any[]) {
+    byType[String(row._id)] = Number(row.total || 0);
   }
   const totalUsd = Object.values(byType).reduce((a, b) => a + Number(b || 0), 0);
 
