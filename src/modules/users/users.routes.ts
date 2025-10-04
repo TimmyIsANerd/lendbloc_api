@@ -29,7 +29,7 @@ users.use('/*', authMiddleware);
 users.get('/profile', getUserProfile);
 users.put('/profile', zValidator('json', updateUserProfileSchema), updateUserProfile);
 
-// List user transactions filtered by token asset (symbol or contract address)
+// List user transactions (filter by type/status; 'type' may be 'all')
 users.get('/transactions', zValidator('query', listUserTransactionsSchema), getUserTransactionsByAsset);
 
 users.post("/request-password-change", zValidator('json', requestPasswordChangeSchema), requestPasswordChange);

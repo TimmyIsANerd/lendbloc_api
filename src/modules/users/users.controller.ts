@@ -247,27 +247,21 @@ export const updateEmailChange = async (c: Context) => {
   }
 }
 
-// Get authenticated user's transaction history filtered by token asset
+// Get authenticated user's transaction history (filter by type/status)
 export const getUserTransactionsByAsset = async (c: Context) => {
   const userId = c.get('jwtPayload').userId;
-  const { assetSymbol, contractAddress, page, limit, status, type } = c.req.valid('query' as never) as z.infer<typeof listUserTransactionsSchema>;
+  const { type, status, page, limit } = c.req.valid('query' as never) as z.infer<typeof listUserTransactionsSchema>;
 
   const pageNum = page ?? 1;
   const limitNum = limit ?? 20;
   const skip = (pageNum - 1) * limitNum;
 
   const filters: Record<string, any> = { user: userId };
-  if (assetSymbol) {
-    filters.asset = assetSymbol.toUpperCase();
-  }
-  if (contractAddress) {
-    filters.contractAddress = contractAddress;
+  if (type && type !== 'all') {
+    filters.type = type;
   }
   if (status) {
     filters.status = status;
-  }
-  if (type) {
-    filters.type = type;
   }
 
   try {
@@ -286,7 +280,7 @@ export const getUserTransactionsByAsset = async (c: Context) => {
       },
     });
   } catch (error) {
-    console.error('Error fetching user transactions by asset:', error);
+    console.error('Error fetching user transactions:', error);
     return c.json({ error: 'An unexpected error occurred' }, 500);
   }
 }
